@@ -13,11 +13,16 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\TransactionController;
 use App\Http\Controllers\Auth\SocialAuthController;
+use App\Http\Controllers\PricingController;
+use App\Http\Controllers\Admin\PlansPageController;
+use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/planos', [PricingController::class, 'index'])->name('pricing.index');
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
@@ -40,6 +45,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/settings', [SystemSettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
+    
+    // Plans Page Settings
+    Route::get('/settings/plans-page', [PlansPageController::class, 'index'])->name('plans-page.index');
+    Route::post('/settings/plans-page', [PlansPageController::class, 'update'])->name('plans-page.update');
     
     // Payment Gateways
     Route::get('/gateways', [PaymentGatewayController::class, 'index'])->name('gateways.index');
@@ -65,5 +74,17 @@ Route::middleware('auth')->group(function () {
 // Social Authentication Routes
 Route::get('/auth/{provider}/redirect', [SocialAuthController::class, 'redirect'])->name('social.redirect');
 Route::get('/auth/{provider}/callback', [SocialAuthController::class, 'callback'])->name('social.callback');
+
+// Checkout Routes
+Route::middleware(['auth'])->group(function () {
+    Route::post('/checkout/check-status', [CheckoutController::class, 'checkStatus'])->name('checkout.check_status');
+    Route::post('/checkout/{plan}', [CheckoutController::class, 'store'])->name('checkout.store');
+    Route::get('/checkout/success', [CheckoutController::class, 'success'])->name('checkout.success');
+    Route::get('/checkout/failure', [CheckoutController::class, 'failure'])->name('checkout.failure');
+    Route::get('/checkout/pending', [CheckoutController::class, 'pending'])->name('checkout.pending');
+});
+
+// Webhook Routes
+Route::post('/webhook/mercadopago', [WebhookController::class, 'handleMercadoPago'])->name('webhook.mercadopago');
 
 require __DIR__.'/auth.php';

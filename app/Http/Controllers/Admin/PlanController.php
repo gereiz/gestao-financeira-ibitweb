@@ -15,6 +15,8 @@ class PlanController extends Controller
         'future_transactions' => 'Lançamentos Futuros',
         'notifications' => 'Notificações',
         'advanced_reports' => 'Relatórios Avançados',
+        'access_categories' => 'Acessar Categorias',
+        'create_custom_cards' => 'Criar Cards Personalizados',
     ];
 
     public function index()
@@ -36,10 +38,12 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
             'price' => 'required|numeric|min:0',
             'billing_period' => 'required|in:monthly,quarterly,semiannual,yearly',
             'max_transactions' => 'required|integer|min:-1',
             'features' => 'array',
+            'is_featured' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
@@ -79,10 +83,12 @@ class PlanController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:500',
             'price' => 'required|numeric|min:0',
             'billing_period' => 'required|in:monthly,quarterly,semiannual,yearly',
             'max_transactions' => 'required|integer|min:-1',
             'features' => 'array',
+            'is_featured' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);

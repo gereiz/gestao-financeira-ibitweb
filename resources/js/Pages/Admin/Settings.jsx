@@ -16,6 +16,8 @@ export default function Settings({ auth, settings }) {
         google_client_secret: settings.google_client_secret,
         facebook_client_id: settings.facebook_client_id,
         facebook_client_secret: settings.facebook_client_secret,
+        mercadopago_access_token: settings.mercadopago_access_token,
+        mercadopago_public_key: settings.mercadopago_public_key,
     });
 
     const [previewUrl, setPreviewUrl] = useState(settings.logo_path);
@@ -199,6 +201,40 @@ export default function Settings({ auth, settings }) {
                                                     onChange={(e) => setData('facebook_client_secret', e.target.value)}
                                                 />
                                                 <InputError className="mt-2" message={errors.facebook_client_secret} />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-6 pt-6 border-t">
+                                            <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Pagamentos (Mercado Pago)</h3>
+                                            <p className="text-sm text-gray-500">
+                                                Configure as credenciais para processar pagamentos.
+                                            </p>
+
+                                            <div className="space-y-4">
+                                                <div>
+                                                    <InputLabel htmlFor="mercadopago_access_token" value="Access Token" />
+                                                    <TextInput
+                                                        id="mercadopago_access_token"
+                                                        type="password"
+                                                        className="mt-1 block w-full"
+                                                        value={data.mercadopago_access_token}
+                                                        onChange={(e) => setData('mercadopago_access_token', e.target.value)}
+                                                        placeholder="TEST-..."
+                                                    />
+                                                    <InputError className="mt-2" message={errors.mercadopago_access_token} />
+                                                </div>
+
+                                                <div>
+                                                    <InputLabel htmlFor="mercadopago_public_key" value="Public Key" />
+                                                    <TextInput
+                                                        id="mercadopago_public_key"
+                                                        className="mt-1 block w-full"
+                                                        value={data.mercadopago_public_key}
+                                                        onChange={(e) => setData('mercadopago_public_key', e.target.value)}
+                                                        placeholder="TEST-..."
+                                                    />
+                                                    <InputError className="mt-2" message={errors.mercadopago_public_key} />
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

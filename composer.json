@@ -12,6 +12,7 @@
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.17",
         "laravel/tinker": "^2.9",
+        "mercadopago/dx-php": "*",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {

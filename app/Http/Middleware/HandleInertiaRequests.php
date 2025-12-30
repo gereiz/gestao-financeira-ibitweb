@@ -36,12 +36,14 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user() ? [
-                    ...$request->user()->toArray(),
-                    'features' => $request->user()->is_admin 
-                        ? ['future_transactions', 'notifications', 'advanced_reports'] 
-                        : ($request->user()->plan ? $request->user()->plan->features->where('is_enabled', true)->pluck('slug')->values()->all() : [])
-                ] : null,
+                'user' => $request->user() ? array_merge(
+                    $request->user()->load('plan')->toArray(),
+                    [
+                        'features' => $request->user()->is_admin 
+                            ? ['future_transactions', 'notifications', 'advanced_reports', 'access_categories', 'create_custom_cards'] 
+                            : ($request->user()->plan ? $request->user()->plan->features->where('is_enabled', true)->pluck('slug')->values()->all() : [])
+                    ]
+                ) : null,
             ],
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),

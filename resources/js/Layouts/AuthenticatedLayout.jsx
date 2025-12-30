@@ -48,6 +48,7 @@ export default function AuthenticatedLayout({ header, children }) {
             children: [
                 { name: 'Config do Sistema', route: 'admin.settings.edit', active: 'admin.settings.*' },
                 { name: 'Site (Landing Page)', route: 'admin.site.index', active: 'admin.site.*' },
+                { name: 'Pág. de Pagamentos', route: 'admin.plans-page.index', active: 'admin.plans-page.*' },
                 { name: 'Gateway de Pagamento', route: 'admin.gateways.index', active: 'admin.gateways.*' },
             ]
         });

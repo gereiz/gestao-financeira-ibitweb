@@ -34,6 +34,12 @@ export default function Welcome({ auth, sections }) {
                                 </Link>
                             </div>
                             <div className="flex items-center gap-4">
+                                <Link
+                                    href={route('pricing.index')}
+                                    className="text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors"
+                                >
+                                    Planos
+                                </Link>
                                 {auth.user ? (
                                     <Link
                                         href={route('dashboard')}

@@ -25,6 +25,8 @@ class SystemSettingController extends Controller
                 'google_client_secret' => $settings['google_client_secret'] ?? '',
                 'facebook_client_id' => $settings['facebook_client_id'] ?? '',
                 'facebook_client_secret' => $settings['facebook_client_secret'] ?? '',
+                'mercadopago_access_token' => $settings['mercadopago_access_token'] ?? '',
+                'mercadopago_public_key' => $settings['mercadopago_public_key'] ?? '',
             ]
         ]);
     }
@@ -40,6 +42,8 @@ class SystemSettingController extends Controller
             'google_client_secret' => 'nullable|string',
             'facebook_client_id' => 'nullable|string',
             'facebook_client_secret' => 'nullable|string',
+            'mercadopago_access_token' => 'nullable|string',
+            'mercadopago_public_key' => 'nullable|string',
         ]);
 
         // Save Text Settings
@@ -50,6 +54,8 @@ class SystemSettingController extends Controller
         SystemSetting::set('google_client_secret', $request->google_client_secret);
         SystemSetting::set('facebook_client_id', $request->facebook_client_id);
         SystemSetting::set('facebook_client_secret', $request->facebook_client_secret);
+        SystemSetting::set('mercadopago_access_token', $request->mercadopago_access_token);
+        SystemSetting::set('mercadopago_public_key', $request->mercadopago_public_key);
 
         // Handle Logo Upload
         if ($request->hasFile('logo')) {

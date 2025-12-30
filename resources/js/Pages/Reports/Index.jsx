@@ -64,9 +64,12 @@ export default function Index({ auth, hasAccess, data }) {
                                 Os Relatórios Avançados estão disponíveis apenas para usuários do plano Premium. 
                                 Faça um upgrade para desbloquear análises detalhadas e tomar melhores decisões financeiras.
                             </p>
-                            <PrimaryButton>
+                            <Link
+                                href={route('pricing.index')}
+                                className="inline-flex items-center rounded-full border border-transparent bg-primary-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition duration-150 ease-in-out hover:bg-primary-700 focus:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 active:bg-primary-900"
+                            >
                                 Fazer Upgrade para Premium
-                            </PrimaryButton>
+                            </Link>
                         </div>
                     ) : (
                         <div className="space-y-6">

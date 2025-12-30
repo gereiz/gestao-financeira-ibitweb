@@ -4,14 +4,17 @@ import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
 import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
+import Checkbox from '@/Components/Checkbox';
 
 export default function Edit({ auth, plan, availableFeatures, planFeatures }) {
     const { data, setData, put, processing, errors } = useForm({
         name: plan.name,
+        description: plan.description || '',
         price: plan.price,
         billing_period: plan.billing_period,
         max_transactions: plan.max_transactions,
         features: planFeatures,
+        is_featured: Boolean(plan.is_featured),
     });
 
     const handleFeatureToggle = (slug) => {
@@ -51,6 +54,19 @@ export default function Edit({ auth, plan, availableFeatures, planFeatures }) {
                                         isFocused
                                     />
                                     <InputError message={errors.name} className="mt-2" />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <InputLabel htmlFor="description" value="Descrição" />
+                                    <textarea
+                                        id="description"
+                                        className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                        value={data.description}
+                                        onChange={(e) => setData('description', e.target.value)}
+                                        rows="3"
+                                        placeholder="Breve descrição do plano"
+                                    />
+                                    <InputError message={errors.description} className="mt-2" />
                                 </div>
 
                                 <div>
@@ -94,6 +110,17 @@ export default function Edit({ auth, plan, availableFeatures, planFeatures }) {
                                         required
                                     />
                                     <InputError message={errors.max_transactions} className="mt-2" />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="flex items-center">
+                                        <Checkbox
+                                            name="is_featured"
+                                            checked={data.is_featured}
+                                            onChange={(e) => setData('is_featured', e.target.checked)}
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Plano em Destaque (Featured)</span>
+                                    </label>
                                 </div>
                             </div>
 

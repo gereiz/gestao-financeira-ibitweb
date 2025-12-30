@@ -54,6 +54,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'is_admin' => 'boolean',
             'preferences' => 'array',
+            'plan_expires_at' => 'datetime',
         ];
     }
 

@@ -10,6 +10,10 @@ class DashboardWidgetController extends Controller
 {
     public function store(Request $request)
     {
+        if (!Auth::user()->hasFeature('create_custom_cards')) {
+            abort(403, 'Upgrade your plan to create custom cards.');
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|string',

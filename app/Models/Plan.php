@@ -12,15 +12,18 @@ class Plan extends Model
 
     protected $fillable = [
         'name',
+        'description',
         'slug',
         'price',
         'billing_period',
         'max_transactions',
         'is_active',
+        'is_featured',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
+        'is_featured' => 'boolean',
         'price' => 'decimal:2',
     ];
 

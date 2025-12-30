@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/Components/Dashboard/SortableItem';
-import { Wallet, TrendingUp, TrendingDown, GripHorizontal, Plus, X, Users, Shield, Activity, CreditCard } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, GripHorizontal, Plus, X, Users, Shield, Activity, CreditCard, Lock } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -358,6 +358,14 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                 <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>
                 
                 <div className="flex flex-wrap items-center gap-3">
+                    {auth.user.plan && (
+                        <div className="hidden md:flex flex-col items-end mr-2 text-xs text-gray-500 dark:text-gray-400">
+                            <span className="font-semibold text-primary-600 dark:text-primary-400">{auth.user.plan.name}</span>
+                            {auth.user.plan_expires_at && (
+                                <span>Vence em: {new Date(auth.user.plan_expires_at).toLocaleDateString()}</span>
+                            )}
+                        </div>
+                    )}
                     <select
                         value={period}
                         onChange={handlePeriodChange}
@@ -428,13 +436,23 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
 
                             {/* Add Widget Button */}
                             <div className="flex items-center justify-center min-h-[200px]">
-                                <button
-                                    onClick={() => setShowAddWidgetModal(true)}
-                                    className="w-16 h-16 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
-                                    title="Adicionar Novo Card"
-                                >
-                                    <Plus size={32} />
-                                </button>
+                                {auth.user.features?.includes('create_custom_cards') ? (
+                                    <button
+                                        onClick={() => setShowAddWidgetModal(true)}
+                                        className="w-16 h-16 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
+                                        title="Adicionar Novo Card"
+                                    >
+                                        <Plus size={32} />
+                                    </button>
+                                ) : (
+                                    <button
+                                        onClick={() => router.get(route('pricing.index'))}
+                                        className="w-16 h-16 bg-gray-300 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-full shadow-lg flex items-center justify-center transition-colors hover:bg-gray-400 dark:hover:bg-gray-600"
+                                        title="Funcionalidade Premium - Clique para fazer upgrade"
+                                    >
+                                        <Lock size={32} />
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </SortableContext>

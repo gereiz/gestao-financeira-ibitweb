@@ -20,6 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
         ]);
 
+        $middleware->validateCsrfTokens(except: [
+            'webhook/mercadopago',
+        ]);
+
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
