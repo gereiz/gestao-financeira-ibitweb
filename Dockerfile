@@ -55,7 +55,12 @@ RUN echo '#!/bin/bash\n\
 if [ ! -f .env ]; then\n\
     cp .env.example .env\n\
 fi\n\
-php artisan key:generate --force --skip-if-exists\n\
+\n\
+# Garante que a APP_KEY seja gerada se estiver vazia\n\
+if ! grep -q "^APP_KEY=base64:" .env; then\n\
+    php artisan key:generate --force\n\
+fi\n\
+\n\
 php artisan package:discover --ansi\n\
 php artisan migrate --force\n\
 php artisan storage:link\n\
