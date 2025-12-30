@@ -9,11 +9,12 @@ RUN apt-get update && apt-get install -y \
     libxml2-dev \
     zip \
     unzip \
+    libzip-dev \
     libfreetype6-dev \
     libjpeg62-turbo-dev \
     default-mysql-client \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd
+    && docker-php-ext-install pdo_mysql mbstring exif pcntl bcmath gd zip
 
 # Ativar mod_rewrite do Apache
 RUN a2enmod rewrite
@@ -29,7 +30,7 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 WORKDIR /var/www/html
 
 # Configurar Apache para usar a pasta public como root
-ENV APACHE_DOCUMENT_ROOT /var/www/html/public
+ENV APACHE_DOCUMENT_ROOT=/var/www/html/public
 RUN sed -ri -e 's!/var/www/html!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/sites-available/*.conf
 RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf /etc/apache2/conf-available/*.conf
 
@@ -37,7 +38,9 @@ RUN sed -ri -e 's!/var/www/!${APACHE_DOCUMENT_ROOT}!g' /etc/apache2/apache2.conf
 COPY . .
 
 # Instalar dependências do PHP
-RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev
+# Usamos --no-scripts para evitar erros de boot sem variáveis de ambiente/banco
+ENV COMPOSER_MEMORY_LIMIT=-1
+RUN composer install --no-interaction --prefer-dist --optimize-autoloader --no-dev --no-scripts
 
 # Instalar dependências do Node e buildar assets
 RUN npm install && npm run build
@@ -47,9 +50,11 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
 # Criar script de inicialização
-# Este script roda as migrações e limpa o cache antes de iniciar o Apache
+# Adicionamos package:discover e storage:link
 RUN echo '#!/bin/bash\n\
+php artisan package:discover --ansi\n\
 php artisan migrate --force\n\
+php artisan storage:link\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
 php artisan view:cache\n\

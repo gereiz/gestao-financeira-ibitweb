@@ -20,6 +20,12 @@ use App\Http\Controllers\WebhookController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use App\Http\Controllers\InstallController;
+
+// Rotas de Instalação (Abertas)
+Route::get('/install', [InstallController::class, 'index'])->name('install.index');
+Route::post('/install/test', [InstallController::class, 'testConnection'])->name('install.test');
+Route::post('/install/store', [InstallController::class, 'store'])->name('install.store');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/planos', [PricingController::class, 'index'])->name('pricing.index');
