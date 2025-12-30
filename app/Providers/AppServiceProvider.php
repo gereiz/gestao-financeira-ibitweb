@@ -26,9 +26,15 @@ class AppServiceProvider extends ServiceProvider
     {
         Vite::prefetch(concurrency: 3);
 
-        if (Schema::hasTable('system_settings')) {
-            $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
-            View::share('system_settings', $settings);
+        try {
+            // Verifica se a tabela existe antes de consultar
+            // Envolvemos em try-catch para garantir que não quebre em ambiente sem DB configurado (instalação)
+            if (Schema::hasTable('system_settings')) {
+                $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
+                View::share('system_settings', $settings);
+            }
+        } catch (\Exception $e) {
+            // Silencia erro de conexão para permitir que o instalador rode
         }
     }
 }
