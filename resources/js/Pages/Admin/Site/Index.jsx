@@ -43,6 +43,15 @@ export default function Index({ auth, sections }) {
         post(route('admin.site.update'));
     };
 
+    const handleImageChange = (index, field, file) => {
+        const newSections = [...data.sections];
+        newSections[index].content = {
+            ...newSections[index].content,
+            [field]: file
+        };
+        setData('sections', newSections);
+    };
+
     const renderHeroForm = (section, index) => (
         <div className="space-y-4">
             <div>
@@ -71,12 +80,29 @@ export default function Index({ auth, sections }) {
                 />
             </div>
             <div>
-                <InputLabel value="URL da Imagem" />
-                <TextInput
-                    value={section.content.image_url}
-                    onChange={(e) => handleContentChange(index, 'image_url', e.target.value)}
-                    className="w-full mt-1"
-                />
+                <InputLabel value="Imagem da Seção" />
+                <div className="mt-2 flex items-center gap-4">
+                    {section.content.image_url && (
+                        <div className="relative w-32 h-20 rounded-lg overflow-hidden border border-gray-200">
+                            <img 
+                                src={section.content.image_file ? URL.createObjectURL(section.content.image_file) : section.content.image_url} 
+                                alt="Preview" 
+                                className="w-full h-full object-cover"
+                            />
+                        </div>
+                    )}
+                    <div className="flex-1">
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleImageChange(index, 'image_file', e.target.files[0])}
+                            className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                        />
+                        <p className="mt-1 text-xs text-gray-500">
+                            Formatos aceitos: JPG, PNG, WEBP. Tamanho máx: 2MB.
+                        </p>
+                    </div>
+                </div>
             </div>
         </div>
     );

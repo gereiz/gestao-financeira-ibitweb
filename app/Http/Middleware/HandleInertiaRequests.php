@@ -52,6 +52,8 @@ class HandleInertiaRequests extends Middleware
                 'logo_path' => $settings['logo_path'] ?? null,
                 'primary_color' => $settings['primary_color'] ?? '#4F46E5', // Default Indigo-600
                 'font_family' => $settings['font_family'] ?? 'Inter',
+                'google_auth_enabled' => !empty($settings['google_client_id']) && !empty($settings['google_client_secret']),
+                'facebook_auth_enabled' => !empty($settings['facebook_client_id']) && !empty($settings['facebook_client_secret']),
             ],
         ];
     }

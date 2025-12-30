@@ -21,6 +21,10 @@ class SystemSettingController extends Controller
                 'logo_path' => $settings['logo_path'] ?? null,
                 'primary_color' => $settings['primary_color'] ?? '#000000',
                 'font_family' => $settings['font_family'] ?? 'Inter',
+                'google_client_id' => $settings['google_client_id'] ?? '',
+                'google_client_secret' => $settings['google_client_secret'] ?? '',
+                'facebook_client_id' => $settings['facebook_client_id'] ?? '',
+                'facebook_client_secret' => $settings['facebook_client_secret'] ?? '',
             ]
         ]);
     }
@@ -32,12 +36,20 @@ class SystemSettingController extends Controller
             'logo' => 'nullable|image|max:1024', // 1MB max
             'primary_color' => 'required|string|regex:/^#[a-fA-F0-9]{6}$/',
             'font_family' => 'required|string|max:100',
+            'google_client_id' => 'nullable|string',
+            'google_client_secret' => 'nullable|string',
+            'facebook_client_id' => 'nullable|string',
+            'facebook_client_secret' => 'nullable|string',
         ]);
 
         // Save Text Settings
         SystemSetting::set('app_name', $request->app_name);
         SystemSetting::set('primary_color', $request->primary_color);
         SystemSetting::set('font_family', $request->font_family);
+        SystemSetting::set('google_client_id', $request->google_client_id);
+        SystemSetting::set('google_client_secret', $request->google_client_secret);
+        SystemSetting::set('facebook_client_id', $request->facebook_client_id);
+        SystemSetting::set('facebook_client_secret', $request->facebook_client_secret);
 
         // Handle Logo Upload
         if ($request->hasFile('logo')) {

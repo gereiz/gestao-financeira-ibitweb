@@ -25,12 +25,23 @@ class LandingPageController extends Controller
             'sections.*.id' => 'required|exists:landing_page_sections,id',
             'sections.*.content' => 'required|array',
             'sections.*.is_visible' => 'boolean',
+            'sections.*.content.image_file' => 'nullable|image|max:2048', // Validação para upload de imagem
         ]);
 
-        foreach ($request->sections as $sectionData) {
+        foreach ($request->sections as $index => $sectionData) {
             $section = LandingPageSection::find($sectionData['id']);
+            $content = $sectionData['content'];
+
+            // Processar upload de imagem (Hero section)
+            if ($request->hasFile("sections.{$index}.content.image_file")) {
+                $file = $request->file("sections.{$index}.content.image_file");
+                $path = $file->store('landing-page', 'public');
+                $content['image_url'] = '/storage/' . $path;
+                unset($content['image_file']); // Remover o arquivo do array de conteúdo
+            }
+
             $section->update([
-                'content' => $sectionData['content'],
+                'content' => $content,
                 'is_visible' => $sectionData['is_visible'],
             ]);
         }
