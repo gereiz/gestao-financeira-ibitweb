@@ -52,12 +52,17 @@ RUN chown -R www-data:www-data /var/www/html \
 # Criar script de inicialização
 # Adicionamos package:discover e storage:link
 RUN echo '#!/bin/bash\n\
+if [ ! -f .env ]; then\n\
+    cp .env.example .env\n\
+fi\n\
+php artisan key:generate --force --skip-if-exists\n\
 php artisan package:discover --ansi\n\
 php artisan migrate --force\n\
 php artisan storage:link\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
 php artisan view:cache\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache\n\
 apache2-foreground' > /usr/local/bin/start-container \
     && chmod +x /usr/local/bin/start-container
 
