@@ -54,11 +54,18 @@ RUN chown -R www-data:www-data /var/www/html \
 RUN echo '#!/bin/bash\n\
 if [ ! -f .env ]; then\n\
     cp .env.example .env\n\
+    # Força driver de sessão para file para evitar erro de banco na instalação\n\
+    sed -i "s/SESSION_DRIVER=database/SESSION_DRIVER=file/g" .env\n\
 fi\n\
 \n\
 # Garante que a APP_KEY seja gerada se estiver vazia\n\
 if ! grep -q "^APP_KEY=base64:" .env; then\n\
     php artisan key:generate --force\n\
+fi\n\
+\n\
+# Cria arquivo sqlite se não existir para evitar erros de conexão inicial\n\
+if [ ! -f database/database.sqlite ]; then\n\
+    touch database/database.sqlite\n\
 fi\n\
 \n\
 php artisan package:discover --ansi\n\
@@ -67,7 +74,11 @@ php artisan storage:link\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
 php artisan view:cache\n\
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache\n\
+\n\
+# Ajusta permissões recursivamente para garantir escrita\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database\n\
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database\n\
+\n\
 apache2-foreground' > /usr/local/bin/start-container \
     && chmod +x /usr/local/bin/start-container
 
