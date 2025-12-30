@@ -48,6 +48,8 @@ class SocialAuthController extends Controller
             }
         } else {
             // Create new user
+            $freePlan = \App\Models\Plan::where('price', 0)->where('is_active', true)->first();
+            
             $user = User::create([
                 'name' => $socialUser->getName(),
                 'email' => $socialUser->getEmail(),
@@ -56,6 +58,7 @@ class SocialAuthController extends Controller
                 'avatar' => $socialUser->getAvatar(),
                 'google_id' => $provider === 'google' ? $socialUser->getId() : null,
                 'facebook_id' => $provider === 'facebook' ? $socialUser->getId() : null,
+                'plan_id' => $freePlan ? $freePlan->id : null,
             ]);
         }
 

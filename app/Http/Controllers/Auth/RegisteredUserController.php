@@ -36,10 +36,13 @@ class RegisteredUserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
+        $freePlan = \App\Models\Plan::where('price', 0)->where('is_active', true)->first();
+
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'plan_id' => $freePlan ? $freePlan->id : null,
         ]);
 
         event(new Registered($user));

@@ -11,7 +11,11 @@ class PricingController extends Controller
 {
     public function index()
     {
-        $plans = Plan::with('features')->where('is_active', true)->get();
+        $plans = Plan::with('features')
+            ->where('is_active', true)
+            ->where('price', '>', 0)
+            ->orderBy('price', 'asc')
+            ->get();
         $sections = PlansPageSection::where('is_visible', true)->get()->keyBy('key');
 
         return Inertia::render('Pricing/Index', [
