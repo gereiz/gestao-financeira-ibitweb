@@ -72,16 +72,16 @@ php artisan config:cache\n\
 php artisan route:cache\n\
 php artisan view:cache\n\
 \n\
-# Ajusta permissões recursivamente para garantir escrita
-chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
-chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database
-
-# Garante permissão de escrita no .env se ele existir
-if [ -f .env ]; then
-    chown www-data:www-data .env
-    chmod 664 .env
-fi
-
+# Ajusta permissões recursivamente para garantir escrita\n\
+chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database\n\
+chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache /var/www/html/database\n\
+\n\
+# Garante permissão de escrita no .env se ele existir\n\
+if [ -f .env ]; then\n\
+    chown www-data:www-data .env\n\
+    chmod 664 .env\n\
+fi\n\
+\n\
 apache2-foreground' > /usr/local/bin/start-container \
     && chmod +x /usr/local/bin/start-container
 
