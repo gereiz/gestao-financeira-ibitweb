@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, Link } from '@inertiajs/react';
 import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import PrimaryButton from '@/Components/PrimaryButton';
@@ -271,10 +271,28 @@ export default function Settings({ auth, settings }) {
                                                 </div>
                                             </div>
                                         </div>
+
+                                        <div className="space-y-6 pt-6 border-t">
+                                            <h3 className="text-lg font-medium text-gray-900 border-b pb-2">Manutenção do Sistema</h3>
+                                            <div className="flex items-center justify-between bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                                                <div>
+                                                    <h4 className="font-medium text-yellow-800">Correção de Imagens</h4>
+                                                    <p className="text-sm text-yellow-700 mt-1">
+                                                        Se o logo ou favicon não estiverem aparecendo (erro 403), clique aqui para corrigir o link de armazenamento.
+                                                    </p>
+                                                </div>
+                                                <Link
+                                                    href={route('admin.fix-storage')}
+                                                    className="px-4 py-2 bg-yellow-600 text-white rounded-md text-sm font-medium hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-yellow-500"
+                                                >
+                                                    Corrigir Imagens
+                                                </Link>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex items-center gap-4 pt-6 border-t">
+                                <div className="flex items-center justify-end mt-8 pt-6 border-t">
                                     <PrimaryButton disabled={processing} className="rounded-full">
                                         Salvar Alterações
                                     </PrimaryButton>

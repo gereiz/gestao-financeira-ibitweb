@@ -53,9 +53,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/fix-storage', function () {
         try {
             \Illuminate\Support\Facades\Artisan::call('storage:link');
-            return 'Storage link fixed! <a href="/admin/settings">Go back</a>';
+            return redirect()->back()->with('success', 'Link de armazenamento corrigido com sucesso! As imagens devem aparecer agora.');
         } catch (\Exception $e) {
-            return 'Error: ' . $e->getMessage();
+            return redirect()->back()->with('error', 'Erro ao corrigir storage: ' . $e->getMessage());
         }
     })->name('fix-storage');
 
