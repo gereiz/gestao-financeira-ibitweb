@@ -18,7 +18,15 @@ class InstallController extends Controller
             return redirect('/');
         }
 
-        return Inertia::render('Install/Index');
+        return Inertia::render('Install/Index', [
+            'db_config' => [
+                'host' => config('database.connections.mysql.host') ?? '127.0.0.1',
+                'port' => config('database.connections.mysql.port') ?? '3306',
+                'database' => config('database.connections.mysql.database') ?? 'laravel',
+                'username' => config('database.connections.mysql.username') ?? 'root',
+                'password' => '', // Por segurança não preenchemos a senha
+            ]
+        ]);
     }
 
     public function testConnection(Request $request)
@@ -89,8 +97,9 @@ class InstallController extends Controller
             DB::purge('mysql');
             DB::reconnect('mysql');
 
-            // 3. Rodar Migrations
+            // 3. Rodar Migrations e Seeders
             Artisan::call('migrate', ['--force' => true]);
+            Artisan::call('db:seed', ['--force' => true]);
 
             // 4. Criar arquivo de lock
             touch(storage_path('installed'));

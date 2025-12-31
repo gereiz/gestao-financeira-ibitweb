@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\Response;
 
 class CheckDatabaseConnection
@@ -22,19 +23,23 @@ class CheckDatabaseConnection
         }
 
         // Se o arquivo de instalação já existe, assume que está tudo ok
-        // Isso evita testar a conexão com o banco em toda requisição (performance)
         if (file_exists(storage_path('installed'))) {
             return $next($request);
         }
 
-        // Se não existe o arquivo, tenta conectar
         try {
             DB::connection()->getPdo();
             
-            // Se conectou com sucesso, cria o arquivo para não checar mais
-            touch(storage_path('installed'));
-            
-            return $next($request);
+            // Se conectou, verifica se as tabelas principais existem
+            if (Schema::hasTable('users') && Schema::hasTable('migrations')) {
+                // Se existem, marca como instalado para evitar checks futuros
+                touch(storage_path('installed'));
+                return $next($request);
+            }
+
+            // Se conectou mas não tem tabelas, redireciona para instalação
+            return redirect()->route('install.index');
+
         } catch (\Exception $e) {
             // Se falhar a conexão, redireciona para instalação
             return redirect()->route('install.index');

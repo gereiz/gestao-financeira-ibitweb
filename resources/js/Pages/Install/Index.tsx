@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
 
-export default function Install() {
+export default function Install({ db_config }: { db_config: any }) {
     const { data, setData, post, processing, errors } = useForm({
-        host: '127.0.0.1',
-        port: '3306',
-        database: 'laravel',
-        username: 'root',
+        host: db_config?.host || '127.0.0.1',
+        port: db_config?.port || '3306',
+        database: db_config?.database || 'laravel',
+        username: db_config?.username || 'root',
         password: '',
     });
 
