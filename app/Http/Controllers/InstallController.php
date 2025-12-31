@@ -57,7 +57,14 @@ class InstallController extends Controller
 
             DB::connection('temp_install')->getPdo();
 
-            return response()->json(['message' => 'Conexão realizada com sucesso!', 'status' => 'success']);
+            // Verificar se existem tabelas
+            $hasTables = count(DB::connection('temp_install')->select('SHOW TABLES')) > 0;
+
+            return response()->json([
+                'message' => 'Conexão realizada com sucesso!' . ($hasTables ? ' Tabelas existentes detectadas.' : ''),
+                'status' => 'success',
+                'has_tables' => $hasTables
+            ]);
         } catch (\Exception $e) {
             return response()->json(['message' => 'Erro ao conectar: ' . $e->getMessage(), 'status' => 'error'], 400);
         }
@@ -71,6 +78,7 @@ class InstallController extends Controller
             'database' => 'required',
             'username' => 'required',
             'password' => 'nullable',
+            'install_mode' => 'nullable|in:fresh,keep',
         ]);
 
         try {
@@ -98,8 +106,29 @@ class InstallController extends Controller
             DB::reconnect('mysql');
 
             // 3. Rodar Migrations e Seeders
-            Artisan::call('migrate', ['--force' => true]);
-            Artisan::call('db:seed', ['--force' => true]);
+            $installMode = $request->input('install_mode'); 
+            
+            if (!$installMode) {
+                // Se o usuário não escolheu (ex: não rodou teste), verificamos segurança
+                try {
+                    $hasTables = count(DB::select('SHOW TABLES')) > 0;
+                    $installMode = $hasTables ? 'keep' : 'fresh';
+                } catch (\Exception $e) {
+                    $installMode = 'fresh';
+                }
+            }
+            
+            if ($installMode === 'keep') {
+                // Apenas migra as alterações pendentes, mantendo os dados
+                Artisan::call('migrate', ['--force' => true]);
+                // Não roda seeders para evitar duplicação
+            } else {
+                // Instalação limpa: apaga tudo e recria
+                Artisan::call('migrate:fresh', [
+                    '--force' => true,
+                    '--seed' => true
+                ]);
+            }
 
             // 4. Criar arquivo de lock
             touch(storage_path('installed'));

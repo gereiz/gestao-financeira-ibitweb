@@ -9,18 +9,28 @@ export default function Install({ db_config }) {
         database: db_config?.database || 'laravel',
         username: db_config?.username || 'root',
         password: '',
+        install_mode: null, // Será definido após teste ou assumido pelo backend
     });
 
     const [testStatus, setTestStatus] = useState({ type: null, message: '' });
     const [isTesting, setIsTesting] = useState(false);
+    const [hasTables, setHasTables] = useState(false);
 
     const testConnection = async () => {
         setIsTesting(true);
         setTestStatus({ type: null, message: '' });
+        setHasTables(false);
 
         try {
             const response = await axios.post(route('install.test'), data);
             setTestStatus({ type: 'success', message: response.data.message });
+            
+            if (response.data.has_tables) {
+                setHasTables(true);
+                setData('install_mode', 'keep'); // Default to keep if tables exist
+            } else {
+                setData('install_mode', 'fresh');
+            }
         } catch (error) {
             setTestStatus({ 
                 type: 'error', 
@@ -115,6 +125,48 @@ export default function Install({ db_config }) {
                         />
                         {errors.password && <div className="text-red-500 text-xs mt-1">{errors.password}</div>}
                     </div>
+
+                    {/* Modo de Instalação (Apenas se detectar tabelas) */}
+                    {hasTables && (
+                        <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200 animate-fade-in">
+                            <label className="block text-sm font-medium text-yellow-800 mb-2">
+                                Tabelas existentes detectadas. O que deseja fazer?
+                            </label>
+                            <div className="space-y-2">
+                                <div className="flex items-center">
+                                    <input
+                                        id="mode_keep"
+                                        name="install_mode"
+                                        type="radio"
+                                        checked={data.install_mode === 'keep'}
+                                        onChange={() => setData('install_mode', 'keep')}
+                                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="mode_keep" className="ml-3 block text-sm font-medium text-gray-700">
+                                        Manter dados existentes (Apenas atualizar estrutura)
+                                    </label>
+                                </div>
+                                <div className="flex items-center">
+                                    <input
+                                        id="mode_fresh"
+                                        name="install_mode"
+                                        type="radio"
+                                        checked={data.install_mode === 'fresh'}
+                                        onChange={() => setData('install_mode', 'fresh')}
+                                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
+                                    />
+                                    <label htmlFor="mode_fresh" className="ml-3 block text-sm font-medium text-gray-700">
+                                        Instalação Limpa (Apagar tudo e reinstalar)
+                                    </label>
+                                </div>
+                            </div>
+                            {data.install_mode === 'fresh' && (
+                                <p className="mt-2 text-xs text-red-600 font-semibold">
+                                    ⚠️ Atenção: Todos os dados existentes serão perdidos permanentemente.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Status do Teste */}
                     {testStatus.message && (
