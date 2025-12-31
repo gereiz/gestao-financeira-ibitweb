@@ -6,6 +6,12 @@
 
         <title inertia>{{ $system_settings['app_name'] ?? config('app.name', 'Laravel') }}</title>
 
+        @php
+            $favicon = \App\Models\SystemSetting::get('favicon_path');
+            $faviconUrl = $favicon ? \Illuminate\Support\Facades\Storage::url($favicon) : '/favicon.ico';
+        @endphp
+        <link rel="icon" href="{{ $faviconUrl }}">
+
         <!-- Fonts -->
         @if(isset($system_settings['font_family']))
             <link rel="preconnect" href="https://fonts.googleapis.com">

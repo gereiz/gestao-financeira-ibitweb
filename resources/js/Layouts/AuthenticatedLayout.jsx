@@ -191,7 +191,7 @@ export default function AuthenticatedLayout({ header, children }) {
             <main className="lg:ml-64 min-h-screen p-4 lg:p-8 pt-6">
                 {header && (
                     <header className="mb-6 lg:mb-8">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{header}</h1>
+                        <div className="text-2xl font-bold text-gray-900 dark:text-white">{header}</div>
                     </header>
                 )}
                 {children}

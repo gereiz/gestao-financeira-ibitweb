@@ -15,10 +15,19 @@ class SystemSettingController extends Controller
         // Get all settings as key-value pairs
         $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
 
+        $logoPath = $settings['logo_path'] ?? null;
+        if ($logoPath) {
+             $logoPath = str_replace('http://localhost/storage/', '', $logoPath);
+             $logoPath = str_replace(config('app.url').'/storage/', '', $logoPath);
+             if (!str_starts_with($logoPath, 'http')) {
+                 $logoPath = Storage::url($logoPath);
+             }
+        }
+
         return Inertia::render('Admin/Settings', [
             'settings' => [
                 'app_name' => $settings['app_name'] ?? config('app.name'),
-                'logo_path' => $settings['logo_path'] ?? null,
+                'logo_path' => $logoPath,
                 'primary_color' => $settings['primary_color'] ?? '#000000',
                 'font_family' => $settings['font_family'] ?? 'Inter',
                 'google_client_id' => $settings['google_client_id'] ?? '',
@@ -60,8 +69,13 @@ class SystemSettingController extends Controller
         // Handle Logo Upload
         if ($request->hasFile('logo')) {
             $path = $request->file('logo')->store('logos', 'public');
-            $url = Storage::disk('public')->url($path);
-            SystemSetting::set('logo_path', $url);
+            SystemSetting::set('logo_path', $path);
+        }
+
+        // Handle Favicon Upload
+        if ($request->hasFile('favicon')) {
+            $path = $request->file('favicon')->store('favicons', 'public');
+            SystemSetting::set('favicon_path', $path);
         }
 
         return redirect()->back()->with('success', 'Configurações atualizadas com sucesso!');

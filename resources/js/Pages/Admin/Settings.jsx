@@ -21,6 +21,7 @@ export default function Settings({ auth, settings }) {
     });
 
     const [previewUrl, setPreviewUrl] = useState(settings.logo_path);
+    const [faviconPreviewUrl, setFaviconPreviewUrl] = useState(settings.favicon_path);
 
     const submit = (e) => {
         e.preventDefault();
@@ -39,6 +40,21 @@ export default function Settings({ auth, settings }) {
             reader.readAsDataURL(file);
         } else {
             setPreviewUrl(settings.logo_path);
+        }
+    };
+
+    const handleFaviconChange = (e) => {
+        const file = e.target.files[0];
+        setData('favicon', file);
+        
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setFaviconPreviewUrl(reader.result);
+            };
+            reader.readAsDataURL(file);
+        } else {
+            setFaviconPreviewUrl(settings.favicon_path);
         }
     };
 
@@ -80,7 +96,7 @@ export default function Settings({ auth, settings }) {
                                             <InputLabel htmlFor="logo" value="Logo do Sistema" />
                                             <div className="flex items-center gap-4 mt-2">
                                                 {previewUrl && (
-                                                    <img src={previewUrl} alt="Logo Preview" className="h-16 w-16 object-contain border rounded p-1 bg-gray-50" />
+                                                    <img src={previewUrl} alt="Logo Preview" className="h-16 w-auto object-contain border rounded p-1 bg-gray-50" />
                                                 )}
                                                 <input 
                                                     type="file" 
@@ -91,6 +107,24 @@ export default function Settings({ auth, settings }) {
                                                 />
                                             </div>
                                             <InputError className="mt-2" message={errors.logo} />
+                                        </div>
+
+                                        {/* Favicon */}
+                                        <div>
+                                            <InputLabel htmlFor="favicon" value="Favicon (Ícone)" />
+                                            <div className="flex items-center gap-4 mt-2">
+                                                {faviconPreviewUrl && (
+                                                    <img src={faviconPreviewUrl} alt="Favicon Preview" className="h-8 w-8 object-contain border rounded p-1 bg-gray-50" />
+                                                )}
+                                                <input 
+                                                    type="file" 
+                                                    id="favicon"
+                                                    onChange={handleFaviconChange}
+                                                    className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                                                    accept=".ico,.png,.jpg,.svg"
+                                                />
+                                            </div>
+                                            <InputError className="mt-2" message={errors.favicon} />
                                         </div>
 
                                         {/* Primary Color */}

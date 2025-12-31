@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
 
@@ -37,6 +38,20 @@ class HandleInertiaRequests extends Middleware
             $settings = [];
         }
 
+        $logoPath = $settings['logo_path'] ?? null;
+        if ($logoPath) {
+             $logoPath = str_replace('http://localhost/storage/', '', $logoPath);
+             $logoPath = str_replace(config('app.url').'/storage/', '', $logoPath);
+             if (!str_starts_with($logoPath, 'http')) {
+                 $logoPath = Storage::url($logoPath);
+             }
+        }
+
+        $faviconPath = $settings['favicon_path'] ?? null;
+        if ($faviconPath && !str_starts_with($faviconPath, 'http')) {
+             $faviconPath = Storage::url($faviconPath);
+        }
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -55,7 +70,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'system_settings' => [
                 'app_name' => $settings['app_name'] ?? config('app.name'),
-                'logo_path' => $settings['logo_path'] ?? null,
+                'logo_path' => $logoPath,
+                'favicon_path' => $faviconPath,
                 'primary_color' => $settings['primary_color'] ?? '#4F46E5', // Default Indigo-600
                 'font_family' => $settings['font_family'] ?? 'Inter',
                 'google_auth_enabled' => !empty($settings['google_client_id']) && !empty($settings['google_client_secret']),
