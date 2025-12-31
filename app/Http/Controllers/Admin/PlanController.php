@@ -154,8 +154,35 @@ class PlanController extends Controller
             return back()->withErrors(['error' => 'Não é possível excluir um plano que possui usuários ativos.']);
         }
 
+        // Se for um plano recorrente e tiver ID do Mercado Pago, tenta cancelar lá também
+        if ($plan->is_recurring && $plan->mercadopago_plan_id) {
+            $this->cancelMercadoPagoPlan($plan->mercadopago_plan_id);
+        }
+
         $plan->delete();
         return redirect()->route('admin.plans.index')->with('success', 'Plano excluído com sucesso!');
+    }
+
+    private function cancelMercadoPagoPlan($id)
+    {
+        $accessToken = SystemSetting::get('mercadopago_access_token');
+        if (!$accessToken) return;
+
+        try {
+            // Mercado Pago não tem endpoint DELETE para planos, mas podemos atualizar status para cancelled
+            // Verifique a documentação oficial, geralmente é PUT com status
+            $payload = ['status' => 'cancelled'];
+            
+            $response = Http::withToken($accessToken)->put("https://api.mercadopago.com/preapproval_plan/{$id}", $payload);
+            
+            if ($response->successful()) {
+                Log::info('MercadoPago Plan Cancelled', ['id' => $id]);
+            } else {
+                Log::warning('MercadoPago Plan Cancel Failed', ['id' => $id, 'body' => $response->body()]);
+            }
+        } catch (\Exception $e) {
+            Log::error('MP Plan Cancel Exception: ' . $e->getMessage());
+        }
     }
 
     private function createMercadoPagoPlan($data)
