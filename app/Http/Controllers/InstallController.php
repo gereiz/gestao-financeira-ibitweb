@@ -84,6 +84,7 @@ class InstallController extends Controller
         try {
             // 1. Atualizar .env
             $this->updateEnv([
+                'DB_CONNECTION' => 'mysql',
                 'DB_HOST' => $request->host,
                 'DB_PORT' => $request->port,
                 'DB_DATABASE' => $request->database,
@@ -97,6 +98,7 @@ class InstallController extends Controller
             // Força o Laravel a reler as variáveis de ambiente para a conexão atual
             // Nota: Isso pode não funcionar perfeitamente em um único request, mas vamos tentar
             // reconfigurar a conexão default em tempo de execução para rodar as migrations
+            Config::set('database.default', 'mysql');
             Config::set('database.connections.mysql.host', $request->host);
             Config::set('database.connections.mysql.port', $request->port);
             Config::set('database.connections.mysql.database', $request->database);
