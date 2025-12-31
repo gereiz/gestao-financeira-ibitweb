@@ -63,13 +63,10 @@ if ! grep -q "^APP_KEY=base64:" .env; then\n\
     php artisan key:generate --force\n\
 fi\n\
 \n\
-# Cria arquivo sqlite se não existir para evitar erros de conexão inicial\n\
-if [ ! -f database/database.sqlite ]; then\n\
-    touch database/database.sqlite\n\
-fi\n\
+# Remove arquivo de instalação antigo se existir (para garantir o setup)\n\
+rm -f storage/installed\n\
 \n\
 php artisan package:discover --ansi\n\
-php artisan migrate --force\n\
 php artisan storage:link\n\
 php artisan config:cache\n\
 php artisan route:cache\n\
