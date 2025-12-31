@@ -43,33 +43,50 @@ class CheckoutController extends Controller
     private function createSubscription($user, $plan, $accessToken)
     {
         try {
-            // Em vez de criar uma preapproval (que exige cartão), buscamos o init_point do plano
-            $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/preapproval_plan/{$plan->mercadopago_plan_id}");
-
-            if ($response->failed()) {
-                Log::error('MP Get Plan Error', ['body' => $response->body()]);
-                return redirect()->back()->with('error', 'Erro ao obter dados do plano de assinatura. Tente novamente.');
+            // Em vez de redirecionar para o init_point do Plano (que não suporta external_reference dinâmico no URL),
+            // criamos uma "Assinatura" (preapproval) específica para este usuário.
+            
+            $backUrl = route('checkout.success');
+            // Ensure HTTPS in production
+            if (!app()->environment('local') && str_starts_with($backUrl, 'http://')) {
+                $backUrl = str_replace('http://', 'https://', $backUrl);
+            }
+            if (app()->environment('local') && (str_contains($backUrl, 'localhost') || str_contains($backUrl, '127.0.0.1'))) {
+                $backUrl = 'https://www.google.com';
             }
 
-            $mpPlan = $response->json();
-            
-            if (!isset($mpPlan['init_point'])) {
-                Log::error('MP Plan missing init_point', ['plan' => $mpPlan]);
-                return redirect()->back()->with('error', 'Erro de configuração do plano no gateway.');
-            }
-
-            $initPoint = $mpPlan['init_point'];
-            
-            // Adicionamos o external_reference na URL para identificar o usuário no webhook
             $externalRef = json_encode([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'type' => 'subscription'
             ]);
+
+            $payload = [
+                'preapproval_plan_id' => $plan->mercadopago_plan_id,
+                'payer_email' => $user->email,
+                'back_url' => $backUrl,
+                'external_reference' => $externalRef,
+                'status' => 'pending',
+                'reason' => 'Assinatura ' . $plan->name,
+            ];
+
+            Log::info('Creating MP Subscription (Preapproval)', $payload);
+
+            $response = Http::withToken($accessToken)->post('https://api.mercadopago.com/preapproval', $payload);
+
+            if ($response->failed()) {
+                Log::error('MP Create Subscription Error', ['body' => $response->body()]);
+                return redirect()->back()->with('error', 'Erro ao iniciar assinatura. Tente novamente.');
+            }
+
+            $subscription = $response->json();
             
-            // Verifica se já tem query params
-            $separator = (parse_url($initPoint, PHP_URL_QUERY) == NULL) ? '?' : '&';
-            $redirectUrl = $initPoint . $separator . 'external_reference=' . urlencode($externalRef);
+            if (!isset($subscription['init_point'])) {
+                Log::error('MP Subscription missing init_point', ['response' => $subscription]);
+                return redirect()->back()->with('error', 'Erro de configuração do gateway.');
+            }
+
+            $redirectUrl = $subscription['init_point'];
 
             Log::info('MercadoPago Subscription Redirect', ['url' => $redirectUrl]);
 

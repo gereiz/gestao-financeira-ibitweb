@@ -49,6 +49,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
 // Admin Routes
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
+    // Route to fix storage link in production
+    Route::get('/fix-storage', function () {
+        try {
+            \Illuminate\Support\Facades\Artisan::call('storage:link');
+            return 'Storage link fixed! <a href="/admin/settings">Go back</a>';
+        } catch (\Exception $e) {
+            return 'Error: ' . $e->getMessage();
+        }
+    })->name('fix-storage');
+
     Route::get('/settings', [SystemSettingController::class, 'edit'])->name('settings.edit');
     Route::post('/settings', [SystemSettingController::class, 'update'])->name('settings.update');
     
