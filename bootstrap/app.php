@@ -25,7 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhook/mercadopago',
         ]);
 
-        //
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
