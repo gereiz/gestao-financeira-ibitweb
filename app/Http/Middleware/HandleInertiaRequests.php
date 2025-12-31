@@ -31,7 +31,11 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
-        $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
+        try {
+            $settings = SystemSetting::all()->pluck('value', 'key')->toArray();
+        } catch (\Exception $e) {
+            $settings = [];
+        }
 
         return [
             ...parent::share($request),
