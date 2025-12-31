@@ -4,6 +4,10 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
+        @php
+            $system_settings = $system_settings ?? [];
+        @endphp
+
         <title inertia>{{ $system_settings['app_name'] ?? config('app.name', 'Laravel') }}</title>
 
         @php

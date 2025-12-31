@@ -14,8 +14,12 @@ class SystemSetting extends Model
     // Helper to get a setting
     public static function get($key, $default = null)
     {
-        $setting = self::where('key', $key)->first();
-        return $setting ? $setting->value : $default;
+        try {
+            $setting = self::where('key', $key)->first();
+            return $setting ? $setting->value : $default;
+        } catch (\Exception $e) {
+            return $default;
+        }
     }
 
     // Helper to set a setting
