@@ -19,11 +19,14 @@ class Plan extends Model
         'max_transactions',
         'is_active',
         'is_featured',
+        'is_recurring',
+        'mercadopago_plan_id',
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'is_recurring' => 'boolean',
         'price' => 'decimal:2',
     ];
 

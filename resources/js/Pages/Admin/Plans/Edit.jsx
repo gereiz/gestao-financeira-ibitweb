@@ -15,6 +15,7 @@ export default function Edit({ auth, plan, availableFeatures, planFeatures }) {
         max_transactions: plan.max_transactions,
         features: planFeatures,
         is_featured: Boolean(plan.is_featured),
+        is_recurring: Boolean(plan.is_recurring),
     });
 
     const handleFeatureToggle = (slug) => {
@@ -99,8 +100,24 @@ export default function Edit({ auth, plan, availableFeatures, planFeatures }) {
                                     <InputError message={errors.billing_period} className="mt-2" />
                                 </div>
 
+                                <div className="md:col-span-2">
+                                    <label className="flex items-center">
+                                        <Checkbox
+                                            name="is_recurring"
+                                            checked={data.is_recurring}
+                                            onChange={(e) => setData('is_recurring', e.target.checked)}
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                                            Cobrança Recorrente (Assinatura Automática via Mercado Pago)
+                                        </span>
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                                        Se ativado, tentará atualizar ou criar o plano no Mercado Pago.
+                                    </p>
+                                </div>
+
                                 <div>
-                                    <InputLabel htmlFor="max_transactions" value="Max. Transações (-1 para ilimitado)" />
+                                    <InputLabel htmlFor="max_transactions" value="Limite de Transações (Mensal)" />
                                     <TextInput
                                         id="max_transactions"
                                         type="number"

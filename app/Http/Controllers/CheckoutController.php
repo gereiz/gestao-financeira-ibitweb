@@ -26,6 +26,63 @@ class CheckoutController extends Controller
             return redirect()->back()->with('error', 'Erro de configuração: Gateway de pagamento não configurado.');
         }
 
+        // Se for plano recorrente, criar assinatura (Subscription)
+        if ($plan->is_recurring) {
+            if ($plan->mercadopago_plan_id) {
+                return $this->createSubscription($user, $plan, $accessToken);
+            } else {
+                Log::error('Tentativa de assinatura em plano recorrente sem ID do Mercado Pago.', ['plan_id' => $plan->id]);
+                return redirect()->back()->with('error', 'Este plano é recorrente, mas não está devidamente configurado no gateway de pagamento. Entre em contato com o suporte.');
+            }
+        }
+
+        // Se não for recorrente, criar preferência de pagamento único (Checkout Pro)
+        return $this->createPaymentPreference($user, $plan, $accessToken);
+    }
+
+    private function createSubscription($user, $plan, $accessToken)
+    {
+        try {
+            // Em vez de criar uma preapproval (que exige cartão), buscamos o init_point do plano
+            $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/preapproval_plan/{$plan->mercadopago_plan_id}");
+
+            if ($response->failed()) {
+                Log::error('MP Get Plan Error', ['body' => $response->body()]);
+                return redirect()->back()->with('error', 'Erro ao obter dados do plano de assinatura. Tente novamente.');
+            }
+
+            $mpPlan = $response->json();
+            
+            if (!isset($mpPlan['init_point'])) {
+                Log::error('MP Plan missing init_point', ['plan' => $mpPlan]);
+                return redirect()->back()->with('error', 'Erro de configuração do plano no gateway.');
+            }
+
+            $initPoint = $mpPlan['init_point'];
+            
+            // Adicionamos o external_reference na URL para identificar o usuário no webhook
+            $externalRef = json_encode([
+                'user_id' => $user->id,
+                'plan_id' => $plan->id,
+                'type' => 'subscription'
+            ]);
+            
+            // Verifica se já tem query params
+            $separator = (parse_url($initPoint, PHP_URL_QUERY) == NULL) ? '?' : '&';
+            $redirectUrl = $initPoint . $separator . 'external_reference=' . urlencode($externalRef);
+
+            Log::info('MercadoPago Subscription Redirect', ['url' => $redirectUrl]);
+
+            return Inertia::location($redirectUrl);
+
+        } catch (\Exception $e) {
+            Log::error('Subscription Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Ocorreu um erro inesperado na assinatura.');
+        }
+    }
+
+    private function createPaymentPreference($user, $plan, $accessToken)
+    {
         $notificationUrl = route('webhook.mercadopago');
         // Em ambiente local sem https/tunnel, o Mercado Pago pode rejeitar ou falhar ao entregar
         // Para evitar erros de validação se houver restrições, removemos se for localhost
@@ -54,6 +111,7 @@ class CheckoutController extends Controller
             'external_reference' => json_encode([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
+                'type' => 'payment'
             ]),
             'notification_url' => $notificationUrl,
             'statement_descriptor' => 'GESTAOFIN',
@@ -101,31 +159,105 @@ class CheckoutController extends Controller
         Log::info('Checkout Success Route Hit', $request->all());
 
         $paymentId = $request->query('payment_id');
+        $preapprovalId = $request->query('preapproval_id'); // ID da assinatura recorrente
         $status = $request->query('status');
         
-        // Em ambiente local ou se o webhook falhar, verificamos e ativamos no retorno
+        $accessToken = SystemSetting::get('mercadopago_access_token');
+        if (!$accessToken) {
+            return redirect()->route('dashboard')->with('error', 'Erro de configuração do sistema.');
+        }
+
+        // Caso 1: Pagamento Único
         if ($paymentId && $status === 'approved') {
             try {
-                $accessToken = SystemSetting::get('mercadopago_access_token');
+                // Verificar pagamento novamente para segurança
+                $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
                 
-                if ($accessToken) {
-                    $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/v1/payments/{$paymentId}");
+                if ($response->successful()) {
+                    $payment = $response->json();
                     
-                    if ($response->successful()) {
-                        $payment = $response->json();
+                    if ($payment['status'] === 'approved') {
+                        // Reutiliza a lógica do webhook para ativar
+                        // Precisamos instanciar o WebhookController ou duplicar lógica
+                        // Vamos duplicar simplificando pois o WebhookController é para eventos assíncronos
                         
-                        if ($payment['status'] === 'approved') {
-                            $this->activatePlan($payment);
-                            return redirect()->route('dashboard')->with('success', 'Pagamento confirmado! Seu plano foi ativado.');
+                        $externalRef = $payment['external_reference'];
+                        $data = json_decode($externalRef, true);
+                        
+                        if ($data && isset($data['user_id']) && isset($data['plan_id'])) {
+                            $user = \App\Models\User::find($data['user_id']);
+                            $plan = \App\Models\Plan::find($data['plan_id']);
+                            
+                            if ($user && $plan) {
+                                $user->plan_id = $plan->id;
+                                // Define expiração (cópia da lógica do Webhook)
+                                $expiresAt = match ($plan->billing_period) {
+                                    'monthly' => \Carbon\Carbon::now()->addMonth(),
+                                    'quarterly' => \Carbon\Carbon::now()->addMonths(3),
+                                    'semiannual' => \Carbon\Carbon::now()->addMonths(6),
+                                    'yearly' => \Carbon\Carbon::now()->addYear(),
+                                    default => \Carbon\Carbon::now()->addMonth(),
+                                };
+                                $user->plan_expires_at = $expiresAt;
+                                $user->save();
+                                
+                                Log::info("Plan activated via success return for user {$user->id}");
+                            }
                         }
                     }
                 }
             } catch (\Exception $e) {
-                Log::error('Erro ao ativar plano no retorno: ' . $e->getMessage());
+                Log::error('Success Page Payment Check Error: ' . $e->getMessage());
             }
         }
         
-        return redirect()->route('dashboard')->with('info', 'Pagamento em processamento. Seu plano será ativado assim que confirmado.');
+        // Caso 2: Assinatura Recorrente
+        // O MP retorna preapproval_id na URL de sucesso para assinaturas
+        if ($preapprovalId) {
+            try {
+                $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/preapproval/{$preapprovalId}");
+                
+                if ($response->successful()) {
+                    $subscription = $response->json();
+                    
+                    // Se estiver authorized (assinada)
+                    if ($subscription['status'] === 'authorized') {
+                         $externalRef = $subscription['external_reference'];
+                         $data = json_decode($externalRef, true);
+                         
+                         if ($data && isset($data['user_id'])) {
+                             $user = \App\Models\User::find($data['user_id']);
+                             if ($user) {
+                                 $user->mercadopago_subscription_id = $preapprovalId;
+                                 
+                                 // Ativa o plano também
+                                 if (isset($data['plan_id'])) {
+                                     $plan = \App\Models\Plan::find($data['plan_id']);
+                                     if ($plan) {
+                                         $user->plan_id = $plan->id;
+                                          $expiresAt = match ($plan->billing_period) {
+                                            'monthly' => \Carbon\Carbon::now()->addMonth(),
+                                            'quarterly' => \Carbon\Carbon::now()->addMonths(3),
+                                            'semiannual' => \Carbon\Carbon::now()->addMonths(6),
+                                            'yearly' => \Carbon\Carbon::now()->addYear(),
+                                            default => \Carbon\Carbon::now()->addMonth(),
+                                        };
+                                        $user->plan_expires_at = $expiresAt;
+                                     }
+                                 }
+                                 
+                                 $user->save();
+                                 Log::info("Subscription linked via success return for user {$user->id}");
+                             }
+                         }
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::error('Success Page Subscription Check Error: ' . $e->getMessage());
+            }
+        }
+
+        return redirect()->route('dashboard')->with('success', 'Pagamento processado com sucesso! Seu plano será ativado em instantes.');
     }
 
     public function checkStatus()
@@ -225,9 +357,13 @@ class CheckoutController extends Controller
         if ($user && $plan) {
             $user->plan_id = $plan->id;
             
-            $expiresAt = $plan->billing_period === 'monthly' 
-                ? Carbon::now()->addMonth() 
-                : Carbon::now()->addYear();
+            $expiresAt = match ($plan->billing_period) {
+                'monthly' => Carbon::now()->addMonth(),
+                'quarterly' => Carbon::now()->addDays(90),
+                'semiannual' => Carbon::now()->addDays(180),
+                'yearly' => Carbon::now()->addYear(),
+                default => Carbon::now()->addMonth(),
+            };
 
             $user->plan_expires_at = $expiresAt;
             $user->save();

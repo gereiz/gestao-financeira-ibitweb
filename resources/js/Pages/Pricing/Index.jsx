@@ -113,7 +113,14 @@ export default function Index({ plans, hero, faq, auth }) {
                                 <h3 className="text-xl font-bold text-gray-900 mb-2">{plan.name}</h3>
                                 <div className="flex items-baseline mb-6">
                                     <span className="text-4xl font-extrabold text-gray-900">R$ {Number(plan.price).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                                    <span className="text-gray-500 ml-2">/{plan.billing_period === 'monthly' ? 'mês' : 'ano'}</span>
+                                    <span className="text-gray-500 ml-2">/{
+                                        {
+                                            'monthly': 'mês',
+                                            'quarterly': 'trimestre',
+                                            'semiannual': 'semestre',
+                                            'yearly': 'ano'
+                                        }[plan.billing_period] || 'ano'
+                                    }</span>
                                 </div>
                                 <p className="text-gray-600 mb-6 text-sm">
                                     {plan.description || 'Ideal para organizar suas finanças pessoais.'}

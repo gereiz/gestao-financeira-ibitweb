@@ -23,6 +23,8 @@ class User extends Authenticatable
         'email',
         'password',
         'plan_id',
+        'plan_expires_at',
+        'mercadopago_subscription_id',
         'is_active',
         'is_admin',
         'preferences',

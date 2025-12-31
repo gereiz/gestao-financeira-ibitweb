@@ -9,6 +9,10 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 
+use App\Models\SystemSetting;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 class PlanController extends Controller
 {
     private $availableFeatures = [
@@ -44,10 +48,21 @@ class PlanController extends Controller
             'max_transactions' => 'required|integer|min:-1',
             'features' => 'array',
             'is_featured' => 'boolean',
+            'is_recurring' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
         $validated['is_active'] = true;
+        
+        // Se for recorrente, criar no Mercado Pago
+        if (!empty($validated['is_recurring']) && $validated['is_recurring']) {
+            $mpPlanId = $this->createMercadoPagoPlan($validated);
+            if ($mpPlanId) {
+                $validated['mercadopago_plan_id'] = $mpPlanId;
+            } else {
+                return back()->withErrors(['error' => 'Falha ao criar plano recorrente no Mercado Pago. Verifique os logs ou a configuração do token.']);
+            }
+        }
 
         $plan = Plan::create($validated);
 
@@ -89,10 +104,28 @@ class PlanController extends Controller
             'max_transactions' => 'required|integer|min:-1',
             'features' => 'array',
             'is_featured' => 'boolean',
+            'is_recurring' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
         
+        // Verifica mudança de status recorrente ou necessidade de atualização no MP
+        if (!empty($validated['is_recurring']) && $validated['is_recurring']) {
+            // Em ambiente local, forçamos a recriação do plano para garantir que a back_url (google.com) seja aplicada corretamente
+            // ou se o plano não tiver ID ainda.
+            if (app()->environment('local') || !$plan->mercadopago_plan_id) {
+                $mpPlanId = $this->createMercadoPagoPlan($validated);
+                if ($mpPlanId) {
+                    $validated['mercadopago_plan_id'] = $mpPlanId;
+                } else {
+                    return back()->withErrors(['error' => 'Falha ao criar plano recorrente no Mercado Pago. Verifique os logs.']);
+                }
+            } else {
+                // Em produção, tentamos atualizar
+                $this->updateMercadoPagoPlan($plan->mercadopago_plan_id, $validated);
+            }
+        }
+
         $plan->update($validated);
 
         // Sync Features: Delete all and recreate (simple approach)
@@ -123,5 +156,80 @@ class PlanController extends Controller
 
         $plan->delete();
         return redirect()->route('admin.plans.index')->with('success', 'Plano excluído com sucesso!');
+    }
+
+    private function createMercadoPagoPlan($data)
+    {
+        $accessToken = SystemSetting::get('mercadopago_access_token');
+        if (!$accessToken) return null;
+
+        $frequency = 1;
+        $frequencyType = 'months';
+
+        switch ($data['billing_period']) {
+            case 'monthly': $frequency = 1; $frequencyType = 'months'; break;
+            case 'quarterly': $frequency = 3; $frequencyType = 'months'; break;
+            case 'semiannual': $frequency = 6; $frequencyType = 'months'; break;
+            case 'yearly': $frequency = 12; $frequencyType = 'months'; break;
+        }
+
+        // Mercado Pago API requires a valid public URL. Localhost is often rejected.
+        $backUrl = route('checkout.success');
+        if (app()->environment('local') && (str_contains($backUrl, 'localhost') || str_contains($backUrl, '127.0.0.1') || str_contains($backUrl, '.test'))) {
+            // Use a dummy valid URL for local development to pass API validation
+            $backUrl = 'https://www.google.com';
+            Log::warning('Using dummy back_url for Mercado Pago Plan creation due to localhost environment.');
+        }
+
+        $payload = [
+            'reason' => $data['name'],
+            'auto_recurring' => [
+                'frequency' => $frequency,
+                'frequency_type' => $frequencyType,
+                'transaction_amount' => (float) $data['price'],
+                'currency_id' => 'BRL',
+            ],
+            'back_url' => $backUrl,
+            'status' => 'active',
+        ];
+
+        try {
+            $response = Http::withToken($accessToken)->post('https://api.mercadopago.com/preapproval_plan', $payload);
+            
+            if ($response->successful()) {
+                return $response->json()['id'];
+            }
+            
+            Log::error('MP Plan Create Error', ['body' => $response->body()]);
+        } catch (\Exception $e) {
+            Log::error('MP Plan Create Exception: ' . $e->getMessage());
+        }
+
+        return null;
+    }
+
+    private function updateMercadoPagoPlan($id, $data)
+    {
+        $accessToken = SystemSetting::get('mercadopago_access_token');
+        if (!$accessToken) return;
+
+        // Mercado Pago API requires a valid public URL. Localhost is often rejected.
+        $backUrl = route('checkout.success');
+        if (app()->environment('local') && (str_contains($backUrl, 'localhost') || str_contains($backUrl, '127.0.0.1') || str_contains($backUrl, '.test'))) {
+            // Use a dummy valid URL for local development to pass API validation
+            $backUrl = 'https://www.google.com';
+        }
+
+        $payload = [
+            'reason' => $data['name'],
+            'back_url' => $backUrl,
+            // 'auto_recurring' => [ ... ] // MP often restricts updating recurring details on active plans with subscribers
+        ];
+
+        try {
+            Http::withToken($accessToken)->put("https://api.mercadopago.com/preapproval_plan/{$id}", $payload);
+        } catch (\Exception $e) {
+            Log::error('MP Plan Update Exception: ' . $e->getMessage());
+        }
     }
 }

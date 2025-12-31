@@ -15,6 +15,7 @@ export default function Create({ auth, availableFeatures }) {
         max_transactions: 100,
         features: [],
         is_featured: false,
+        is_recurring: false,
     });
 
     const handleFeatureToggle = (slug) => {
@@ -97,6 +98,22 @@ export default function Create({ auth, availableFeatures }) {
                                         <option value="yearly">Anual</option>
                                     </select>
                                     <InputError message={errors.billing_period} className="mt-2" />
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <label className="flex items-center">
+                                        <Checkbox
+                                            name="is_recurring"
+                                            checked={data.is_recurring}
+                                            onChange={(e) => setData('is_recurring', e.target.checked)}
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">
+                                            Cobrança Recorrente (Assinatura Automática via Mercado Pago)
+                                        </span>
+                                    </label>
+                                    <p className="text-xs text-gray-500 mt-1 ml-6">
+                                        Se marcado, o plano será criado no Mercado Pago e cobrará automaticamente do cliente a cada ciclo.
+                                    </p>
                                 </div>
 
                                 <div>
