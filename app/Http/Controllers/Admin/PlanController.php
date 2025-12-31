@@ -215,10 +215,18 @@ class PlanController extends Controller
 
         // Mercado Pago API requires a valid public URL. Localhost is often rejected.
         $backUrl = route('checkout.success');
+
+        // Ensure HTTPS in production/non-local environments
+        if (!app()->environment('local') && str_starts_with($backUrl, 'http://')) {
+            $backUrl = str_replace('http://', 'https://', $backUrl);
+        }
+
         if (app()->environment('local') && (str_contains($backUrl, 'localhost') || str_contains($backUrl, '127.0.0.1') || str_contains($backUrl, '.test'))) {
             // Use a dummy valid URL for local development to pass API validation
             $backUrl = 'https://www.google.com';
         }
+
+        Log::info('Updating MercadoPago Plan', ['id' => $id, 'back_url' => $backUrl]);
 
         $payload = [
             'reason' => $data['name'],

@@ -42,14 +42,34 @@ class HandleInertiaRequests extends Middleware
         if ($logoPath) {
              $logoPath = str_replace('http://localhost/storage/', '', $logoPath);
              $logoPath = str_replace(config('app.url').'/storage/', '', $logoPath);
+             
+             // Remove duplicate storage prefix if present
+             if (str_starts_with($logoPath, '/storage/')) {
+                 $logoPath = substr($logoPath, 9);
+             } elseif (str_starts_with($logoPath, 'storage/')) {
+                 $logoPath = substr($logoPath, 8);
+             }
+
              if (!str_starts_with($logoPath, 'http')) {
                  $logoPath = Storage::url($logoPath);
              }
         }
 
         $faviconPath = $settings['favicon_path'] ?? null;
-        if ($faviconPath && !str_starts_with($faviconPath, 'http')) {
-             $faviconPath = Storage::url($faviconPath);
+        if ($faviconPath) {
+             // Clean up path similar to logo
+             $faviconPath = str_replace('http://localhost/storage/', '', $faviconPath);
+             $faviconPath = str_replace(config('app.url').'/storage/', '', $faviconPath);
+             
+             if (str_starts_with($faviconPath, '/storage/')) {
+                 $faviconPath = substr($faviconPath, 9);
+             } elseif (str_starts_with($faviconPath, 'storage/')) {
+                 $faviconPath = substr($faviconPath, 8);
+             }
+
+             if (!str_starts_with($faviconPath, 'http')) {
+                 $faviconPath = Storage::url($faviconPath);
+             }
         }
 
         return [

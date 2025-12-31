@@ -19,6 +19,14 @@ class SystemSettingController extends Controller
         if ($logoPath) {
              $logoPath = str_replace('http://localhost/storage/', '', $logoPath);
              $logoPath = str_replace(config('app.url').'/storage/', '', $logoPath);
+             
+             // Remove duplicate storage prefix if present
+             if (str_starts_with($logoPath, '/storage/')) {
+                 $logoPath = substr($logoPath, 9);
+             } elseif (str_starts_with($logoPath, 'storage/')) {
+                 $logoPath = substr($logoPath, 8);
+             }
+
              if (!str_starts_with($logoPath, 'http')) {
                  $logoPath = Storage::url($logoPath);
              }
