@@ -22,9 +22,18 @@ class CheckDatabaseConnection
             return $next($request);
         }
 
-        // Se o arquivo de instalação já existe, assume que está tudo ok
+        // Se o arquivo de instalação já existe, verifica se a conexão ainda é válida
         if (file_exists(storage_path('installed'))) {
-            return $next($request);
+            try {
+                // Teste rápido de conexão
+                DB::connection()->getPdo();
+                return $next($request);
+            } catch (\Exception $e) {
+                // Se a conexão falhar (ex: banco mudou, credenciais erradas),
+                // remove o arquivo de 'instalado' para forçar nova configuração
+                @unlink(storage_path('installed'));
+                return redirect()->route('install.index');
+            }
         }
 
         try {
