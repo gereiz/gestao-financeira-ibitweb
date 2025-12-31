@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 import axios from 'axios';
 
-export default function Install({ db_config }: { db_config: any }) {
+export default function Install({ db_config }) {
     const { data, setData, post, processing, errors } = useForm({
         host: db_config?.host || '127.0.0.1',
         port: db_config?.port || '3306',
@@ -11,7 +11,7 @@ export default function Install({ db_config }: { db_config: any }) {
         password: '',
     });
 
-    const [testStatus, setTestStatus] = useState<{ type: 'success' | 'error' | null, message: string }>({ type: null, message: '' });
+    const [testStatus, setTestStatus] = useState({ type: null, message: '' });
     const [isTesting, setIsTesting] = useState(false);
 
     const testConnection = async () => {
@@ -21,7 +21,7 @@ export default function Install({ db_config }: { db_config: any }) {
         try {
             const response = await axios.post(route('install.test'), data);
             setTestStatus({ type: 'success', message: response.data.message });
-        } catch (error: any) {
+        } catch (error) {
             setTestStatus({ 
                 type: 'error', 
                 message: error.response?.data?.message || 'Erro ao conectar. Verifique os dados.' 
@@ -31,7 +31,7 @@ export default function Install({ db_config }: { db_config: any }) {
         }
     };
 
-    const submit = (e: React.FormEvent) => {
+    const submit = (e) => {
         e.preventDefault();
         post(route('install.store'));
     };
