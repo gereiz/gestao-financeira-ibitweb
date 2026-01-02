@@ -9,7 +9,7 @@ use Inertia\Inertia;
 
 class CategoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = auth()->user();
         if (!$user->hasFeature('access_categories')) {
@@ -19,13 +19,23 @@ class CategoryController extends Controller
             ]);
         }
 
-        $categories = Category::orderBy('is_system', 'desc')
-            ->orderBy('name')
-            ->get();
+        $type = $request->input('type', 'all');
+
+        $query = Category::orderBy('is_system', 'desc')
+            ->orderBy('name');
+
+        if ($type !== 'all') {
+            $query->where('type', $type);
+        }
+
+        $categories = $query->get();
             
         return Inertia::render('Categories/Index', [
             'categories' => $categories,
-            'hasAccess' => true
+            'hasAccess' => true,
+            'filters' => [
+                'type' => $type
+            ]
         ]);
     }
 

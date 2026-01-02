@@ -25,4 +25,20 @@ class Feature extends Model
     {
         return $this->belongsTo(Plan::class);
     }
+
+    /**
+     * Retorna a lista de todas as features disponíveis no sistema.
+     * Isso garante uma única fonte da verdade para o PlanController e Seeders.
+     */
+    public static function getAvailableFeatures()
+    {
+        return [
+            'future_transactions' => 'Lançamentos Futuros',
+            'notifications' => 'Notificações',
+            'advanced_reports' => 'Relatórios Avançados',
+            'advanced_charts' => 'Ver Gráficos Avançados',
+            'access_categories' => 'Acessar Categorias',
+            'create_custom_cards' => 'Criar Cards Personalizados',
+        ];
+    }
 }

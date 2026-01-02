@@ -25,11 +25,11 @@ export default function CreateCategoryForm({ onClose }) {
 
     return (
         <section className="p-6">
-            <h2 className="text-lg font-medium text-gray-900">
+            <h2 className="text-lg font-medium text-gray-900 dark:text-gray-100">
                 Nova Categoria
             </h2>
 
-            <p className="mt-1 text-sm text-gray-600">
+            <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
                 Crie uma nova categoria para organizar suas transações.
             </p>
 
@@ -52,7 +52,7 @@ export default function CreateCategoryForm({ onClose }) {
                     <InputLabel htmlFor="type" value="Tipo" />
                     <select
                         id="type"
-                        className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                        className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                         value={data.type}
                         onChange={(e) => setData('type', e.target.value)}
                     >
@@ -68,11 +68,11 @@ export default function CreateCategoryForm({ onClose }) {
                         <input
                             type="color"
                             id="color"
-                            className="h-10 w-20 border border-gray-300 rounded-md shadow-sm p-1"
+                            className="h-10 w-20 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm p-1 dark:bg-dark-card"
                             value={data.color}
                             onChange={(e) => setData('color', e.target.value)}
                         />
-                        <span className="ml-3 text-gray-600">{data.color}</span>
+                        <span className="ml-3 text-gray-600 dark:text-gray-400">{data.color}</span>
                     </div>
                     <InputError message={errors.color} className="mt-2" />
                 </div>

@@ -40,8 +40,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     // Widgets Routes
     Route::post('/dashboard/widgets', [DashboardWidgetController::class, 'store'])->name('dashboard.widgets.store');
+    Route::patch('/dashboard/widgets/{widget}', [DashboardWidgetController::class, 'update'])->name('dashboard.widgets.update');
     Route::delete('/dashboard/widgets/{widget}', [DashboardWidgetController::class, 'destroy'])->name('dashboard.widgets.destroy');
     Route::post('/dashboard/layout', [DashboardWidgetController::class, 'updateOrder'])->name('dashboard.layout.update');
+    Route::post('/dashboard/layout/reset', [DashboardController::class, 'resetLayout'])->name('dashboard.layout.reset');
+    Route::post('/dashboard/card/width', [DashboardController::class, 'updateCardWidth'])->name('dashboard.card.width');
 
     // Reports Route
     Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');

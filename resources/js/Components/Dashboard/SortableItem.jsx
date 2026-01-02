@@ -1,14 +1,14 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-export function SortableItem({ id, children, className = '' }) {
+export function SortableItem({ id, children, className = '', disabled = false }) {
     const {
         attributes,
         listeners,
         setNodeRef,
         transform,
         transition,
-    } = useSortable({ id });
+    } = useSortable({ id, disabled });
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -16,7 +16,13 @@ export function SortableItem({ id, children, className = '' }) {
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...attributes} {...listeners} className={`touch-none ${className}`}>
+        <div 
+            ref={setNodeRef} 
+            style={style} 
+            {...attributes} 
+            {...(!disabled ? listeners : {})} 
+            className={`${!disabled ? 'touch-none' : ''} ${className}`}
+        >
             {children}
         </div>
     );

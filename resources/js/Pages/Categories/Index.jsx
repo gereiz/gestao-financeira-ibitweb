@@ -1,13 +1,20 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
 import { useState } from 'react';
 import Modal from '@/Components/Modal';
 import CreateCategoryForm from './Partials/CreateCategoryForm';
 import { Lock } from 'lucide-react';
 
-export default function Index({ auth, categories, hasAccess = true }) {
+export default function Index({ auth, categories, hasAccess = true, filters }) {
     const { delete: destroy } = useForm();
     const [showCreateModal, setShowCreateModal] = useState(false);
+    const [typeFilter, setTypeFilter] = useState(filters?.type || 'all');
+
+    const handleFilterChange = (e) => {
+        const value = e.target.value;
+        setTypeFilter(value);
+        router.get(route('categories.index'), { type: value }, { preserveState: true, preserveScroll: true });
+    };
 
     const handleDelete = (id) => {
         if (confirm('Tem certeza que deseja excluir esta categoria?')) {
@@ -22,7 +29,7 @@ export default function Index({ auth, categories, hasAccess = true }) {
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Categorias</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Categorias</h2>}
         >
             <Head title="Categorias" />
 
@@ -48,20 +55,31 @@ export default function Index({ auth, categories, hasAccess = true }) {
                             </Link>
                         </div>
                     ) : (
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
-                            <div className="flex justify-between mb-6">
-                                <h3 className="text-lg font-medium">Lista de Categorias</h3>
-                                <button
-                                    onClick={() => setShowCreateModal(true)}
-                                    className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-full font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 focus:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                >
-                                    Nova Categoria
-                                </button>
+                        <div className="bg-white dark:bg-dark-card overflow-hidden shadow-sm sm:rounded-lg p-6">
+                            <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">Lista de Categorias</h3>
+                                <div className="flex items-center gap-4">
+                                    <select
+                                        value={typeFilter}
+                                        onChange={handleFilterChange}
+                                        className="rounded-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 text-sm focus:border-indigo-500 focus:ring-indigo-500 shadow-sm"
+                                    >
+                                        <option value="all">Todas</option>
+                                        <option value="income">Entrada</option>
+                                        <option value="expense">Saída</option>
+                                    </select>
+                                    <button
+                                        onClick={() => setShowCreateModal(true)}
+                                        className="inline-flex items-center px-4 py-2 bg-primary-600 border border-transparent rounded-full font-semibold text-xs text-white uppercase tracking-widest hover:bg-primary-700 focus:bg-primary-700 active:bg-primary-900 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                    >
+                                        Nova Categoria
+                                    </button>
+                                </div>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {categories.map((category) => (
-                                    <div key={category.id} className="border rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-shadow">
+                                    <div key={category.id} className="border dark:border-gray-700 rounded-lg p-4 flex justify-between items-center hover:shadow-md transition-shadow">
                                         <div className="flex items-center">
                                             <div
                                                 className="w-10 h-10 rounded-full flex items-center justify-center text-white mr-4"
@@ -71,22 +89,22 @@ export default function Index({ auth, categories, hasAccess = true }) {
                                                 {category.name.substring(0, 2).toUpperCase()}
                                             </div>
                                             <div>
-                                                <div className="font-bold text-gray-900">{category.name}</div>
-                                                <div className="text-xs text-gray-500 capitalize">{category.type === 'income' ? 'Entrada' : 'Saída'}</div>
+                                                <div className="font-bold text-gray-900 dark:text-gray-100">{category.name}</div>
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">{category.type === 'income' ? 'Entrada' : 'Saída'}</div>
                                             </div>
                                         </div>
                                         <div>
                                             {(auth.user.is_admin || !category.is_system) && (
-                                                <Link href={route('categories.edit', category.id)} className="text-indigo-600 hover:text-indigo-900 mr-2 text-sm">Editar</Link>
+                                                <Link href={route('categories.edit', category.id)} className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 mr-2 text-sm">Editar</Link>
                                             )}
                                             {!category.is_system && (
-                                                <button onClick={() => handleDelete(category.id)} className="text-red-600 hover:text-red-900 text-sm">Excluir</button>
+                                                <button onClick={() => handleDelete(category.id)} className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm">Excluir</button>
                                             )}
                                         </div>
                                     </div>
                                 ))}
                                 {categories.length === 0 && (
-                                    <div className="col-span-full text-center text-gray-500 py-8">
+                                    <div className="col-span-full text-center text-gray-500 dark:text-gray-400 py-8">
                                         Nenhuma categoria cadastrada.
                                     </div>
                                 )}

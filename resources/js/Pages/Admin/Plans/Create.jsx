@@ -16,6 +16,7 @@ export default function Create({ auth, availableFeatures }) {
         features: [],
         is_featured: false,
         is_recurring: false,
+        is_active: true,
     });
 
     const handleFeatureToggle = (slug) => {
@@ -129,7 +130,16 @@ export default function Create({ auth, availableFeatures }) {
                                     <InputError message={errors.max_transactions} className="mt-2" />
                                 </div>
                                 
-                                <div className="md:col-span-2">
+                                <div className="md:col-span-2 space-y-4">
+                                    <label className="flex items-center">
+                                        <Checkbox
+                                            name="is_active"
+                                            checked={data.is_active}
+                                            onChange={(e) => setData('is_active', e.target.checked)}
+                                        />
+                                        <span className="ml-2 text-sm text-gray-600 dark:text-gray-400">Plano Ativo (Visível para compra)</span>
+                                    </label>
+
                                     <label className="flex items-center">
                                         <Checkbox
                                             name="is_featured"

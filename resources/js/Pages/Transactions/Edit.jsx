@@ -62,13 +62,13 @@ export default function Edit({ auth, transaction, categories }) {
 
     return (
         <AuthenticatedLayout
-            header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Editar Transação</h2>}
+            header={<h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Editar Transação</h2>}
         >
             <Head title="Editar Transação" />
 
             <div className="py-12">
                 <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <div className="bg-white dark:bg-dark-card overflow-hidden shadow-sm sm:rounded-lg p-6">
                         <form onSubmit={submit}>
                             <div>
                                 <InputLabel htmlFor="description" value="Descrição" />
@@ -102,7 +102,7 @@ export default function Edit({ auth, transaction, categories }) {
                                 <InputLabel htmlFor="type" value="Tipo" />
                                 <select
                                     id="type"
-                                    className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                     value={data.type}
                                     onChange={(e) => setData('type', e.target.value)}
                                 >
@@ -116,7 +116,7 @@ export default function Edit({ auth, transaction, categories }) {
                                 <InputLabel htmlFor="category_id" value="Categoria" />
                                 <select
                                     id="category_id"
-                                    className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                     value={data.category_id}
                                     onChange={(e) => setData('category_id', e.target.value)}
                                     required
@@ -143,7 +143,7 @@ export default function Edit({ auth, transaction, categories }) {
                                     max={!hasFutureTransactions ? new Date().toISOString().split('T')[0] : undefined}
                                 />
                                 {!hasFutureTransactions && (
-                                    <p className="text-xs text-gray-500 mt-1">Seu plano não permite lançamentos futuros.</p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Seu plano não permite lançamentos futuros.</p>
                                 )}
                                 <InputError message={errors.transaction_date} className="mt-2" />
                             </div>
@@ -152,7 +152,7 @@ export default function Edit({ auth, transaction, categories }) {
                                 <InputLabel htmlFor="status" value="Status" />
                                 <select
                                     id="status"
-                                    className="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    className="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
                                     value={data.status}
                                     onChange={(e) => setData('status', e.target.value)}
                                 >
@@ -165,7 +165,7 @@ export default function Edit({ auth, transaction, categories }) {
                             <div className="flex items-center justify-end mt-4">
                                 <Link
                                     href={route('transactions.index')}
-                                    className="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-4"
+                                    className="underline text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 mr-4"
                                 >
                                     Cancelar
                                 </Link>

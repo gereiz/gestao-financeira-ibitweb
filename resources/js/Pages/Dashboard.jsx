@@ -1,12 +1,17 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, router } from '@inertiajs/react';
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
-import { Doughnut } from 'react-chartjs-2';
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Filler, DoughnutController, BarController, PieController } from 'chart.js';
+import { Doughnut, Bar, Pie } from 'react-chartjs-2';
 import { useState, useEffect } from 'react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { SortableItem } from '@/Components/Dashboard/SortableItem';
-import { Wallet, TrendingUp, TrendingDown, GripHorizontal, Plus, X, Users, Shield, Activity, CreditCard, Lock } from 'lucide-react';
+import BalanceEvolutionChart from '@/Components/Dashboard/BalanceEvolutionChart';
+import CashFlowChart from '@/Components/Dashboard/CashFlowChart';
+import TopTransactionsList from '@/Components/Dashboard/TopTransactionsList';
+import StatusStatsChart from '@/Components/Dashboard/StatusStatsChart';
+import NextDueList from '@/Components/Dashboard/NextDueList';
+import { Wallet, TrendingUp, TrendingDown, GripHorizontal, Plus, X, Users, Shield, Activity, CreditCard, Lock, Pin, BarChart3, PieChart, ArrowUpRight, ArrowDownRight, Minus, RotateCcw, Unlock } from 'lucide-react';
 import Modal from '@/Components/Modal';
 import PrimaryButton from '@/Components/PrimaryButton';
 import SecondaryButton from '@/Components/SecondaryButton';
@@ -15,9 +20,21 @@ import InputLabel from '@/Components/InputLabel';
 import InputError from '@/Components/InputError';
 import axios from 'axios';
 
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, CategoryScale, LinearScale, BarElement, PointElement, LineElement, Title, Filler, DoughnutController, BarController, PieController);
 
-export default function Dashboard({ auth, summary, charts, widgets, layout, categories, isAdmin, adminStats }) {
+export default function Dashboard({ 
+    auth, 
+    summary, 
+    charts, 
+    widgets, 
+    layout = [], 
+    cardWidths = {}, 
+    categories, 
+    isAdmin, 
+    adminStats, 
+    advancedStats, 
+    hasAdvancedAccess 
+}) {
     if (isAdmin) {
         return (
             <AuthenticatedLayout
@@ -122,6 +139,7 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
 
     const [items, setItems] = useState(layout);
     const [showAddWidgetModal, setShowAddWidgetModal] = useState(false);
+    const [isDraggable, setIsDraggable] = useState(false);
     
     // Date Filter State
     const queryParams = new URLSearchParams(window.location.search);
@@ -129,12 +147,13 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
     const [customStartDate, setCustomStartDate] = useState(queryParams.get('start_date') || '');
     const [customEndDate, setCustomEndDate] = useState(queryParams.get('end_date') || '');
 
-    const { data: widgetData, setData: setWidgetData, post: postWidget, processing: processingWidget, errors: widgetErrors, reset: resetWidget } = useForm({
+    const { data: formWidgetData, setData: setWidgetData, post: postWidget, processing: processingWidget, errors: widgetErrors, reset: resetWidget } = useForm({
         name: '',
         type: 'expense',
         filters: {
             type: 'expense',
             categories: [],
+            chart_type: 'none',
         }
     });
 
@@ -195,7 +214,11 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
     };
 
     const sensors = useSensors(
-        useSensor(PointerSensor),
+        useSensor(PointerSensor, {
+            activationConstraint: {
+                distance: 8,
+            },
+        }),
         useSensor(KeyboardSensor, {
             coordinateGetter: sortableKeyboardCoordinates,
         })
@@ -249,39 +272,145 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
     };
 
     const toggleCategory = (id) => {
-        const current = widgetData.filters.categories;
+        const current = formWidgetData.filters.categories;
         const updated = current.includes(id) 
             ? current.filter(c => c !== id)
             : [...current, id];
-        setWidgetData('filters', { ...widgetData.filters, categories: updated });
+        setWidgetData('filters', { ...formWidgetData.filters, categories: updated });
     };
 
     // --- Render Helpers ---
 
-    const renderCard = (type, title, value, icon, colorClass, bgClass, id, isCustom = false) => (
-        <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 h-full relative group transition-colors duration-200">
-            {isCustom && (
-                <button 
-                    onClick={() => deleteWidget(id)}
-                    className="absolute top-4 right-12 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity z-10"
-                >
-                    <X size={20} />
-                </button>
-            )}
-            <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 cursor-grab active:cursor-grabbing z-10">
-                <GripHorizontal size={20} />
-            </div>
-            <div className="flex items-center gap-4 mb-4">
-                <div className={`p-3 rounded-full ${bgClass} ${colorClass}`}>
-                    {icon}
+    const updateWidgetChartType = (widgetId, chartType) => {
+        router.patch(route('dashboard.widgets.update', widgetId), {
+            filters: { chart_type: chartType }
+        }, {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    };
+
+    const renderCard = (type, title, value, icon, colorClass, bgClass, id, isCustom = false, chartType = 'none', breakdown = [], previousValue = null) => {
+        const hasChart = chartType !== 'none' && breakdown.length > 0;
+        
+        const chartData = hasChart ? {
+            labels: breakdown.map(item => item.name),
+            datasets: [
+                {
+                    data: breakdown.map(item => item.total),
+                    backgroundColor: breakdown.map(item => item.color),
+                    borderWidth: 0,
+                },
+            ],
+        } : null;
+
+        const options = {
+            plugins: {
+                legend: {
+                    display: false, 
+                }
+            },
+            cutout: chartType === 'doughnut' ? '70%' : undefined,
+            responsive: true,
+            maintainAspectRatio: false,
+        };
+
+        // Comparison Logic
+        let variation = 0;
+        let isPositive = false;
+        let isNeutral = true;
+        let variationColor = 'text-gray-500';
+
+        if (previousValue !== null) {
+            if (previousValue === 0) {
+                variation = value === 0 ? 0 : 100;
+            } else {
+                variation = ((value - previousValue) / previousValue) * 100;
+            }
+            
+            isPositive = variation > 0;
+            isNeutral = variation === 0;
+
+            if (!isNeutral) {
+                if (type === 'income' || type === 'balance') {
+                    variationColor = isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
+                } else if (type === 'expense') {
+                    variationColor = isPositive ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400';
+                }
+            }
+        }
+
+        return (
+            <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 h-full relative group transition-colors duration-200 flex flex-col justify-between">
+                <div>
+                    {isCustom && isDraggable && (
+                        <button 
+                            onClick={() => deleteWidget(id)}
+                            className="absolute top-4 right-12 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 transition-opacity z-10"
+                        >
+                            <X size={20} />
+                        </button>
+                    )}
+                    {isDraggable && (
+                        <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 cursor-grab active:cursor-grabbing z-10">
+                            <GripHorizontal size={20} />
+                        </div>
+                    )}
+                    <div className="flex items-center gap-4 mb-4">
+                        <div className={`p-3 rounded-full ${bgClass} ${colorClass}`}>
+                            {icon}
+                        </div>
+                        <h3 className="text-gray-500 dark:text-gray-400 font-medium truncate pr-8" title={title}>{title}</h3>
+                    </div>
+                    <div className={`text-2xl font-bold ${colorClass}`}>
+                        {formatCurrency(value)}
+                    </div>
+                    
+                    {/* Comparison Badge */}
+                    {previousValue !== null && (
+                        <div className="flex items-center text-sm mt-2">
+                            <span className={`flex items-center font-medium ${variationColor}`}>
+                                {isNeutral ? (
+                                    <Minus size={16} className="mr-1" />
+                                ) : isPositive ? (
+                                    <TrendingUp size={16} className="mr-1" />
+                                ) : (
+                                    <TrendingDown size={16} className="mr-1" />
+                                )}
+                                {Math.abs(variation).toFixed(1)}%
+                            </span>
+                            <span className="text-gray-400 ml-2 text-xs">vs. período anterior</span>
+                        </div>
+                    )}
                 </div>
-                <h3 className="text-gray-500 dark:text-gray-400 font-medium truncate pr-8" title={title}>{title}</h3>
+
+                {isCustom && (
+                    <div className="mt-4">
+                        {hasChart && (
+                            <div className="h-32 mb-4 relative">
+                                {chartType === 'doughnut' && <Doughnut data={chartData} options={options} />}
+                                {chartType === 'pie' && <Pie data={chartData} options={options} />}
+                                {chartType === 'bar' && <Bar data={chartData} options={{...options, scales: { x: { display: false }, y: { display: false } }}} />}
+                            </div>
+                        )}
+                        
+                        <div className="mt-2">
+                            <select
+                                value={chartType}
+                                onChange={(e) => updateWidgetChartType(id.replace('widget_', ''), e.target.value)}
+                                className="block w-full text-xs rounded-md border-gray-300 dark:border-gray-700 dark:bg-dark-card dark:text-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            >
+                                <option value="none">Sem Gráfico</option>
+                                <option value="doughnut">Rosca</option>
+                                <option value="pie">Pizza</option>
+                                <option value="bar">Barras</option>
+                            </select>
+                        </div>
+                    </div>
+                )}
             </div>
-            <div className={`text-2xl font-bold ${colorClass}`}>
-                {formatCurrency(value)}
-            </div>
-        </div>
-    );
+        );
+    };
 
     const chartOptions = {
         plugins: {
@@ -307,9 +436,11 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
 
         return (
             <div className="bg-white dark:bg-dark-card rounded-2xl p-6 shadow-sm border border-gray-100 dark:border-gray-800 transition-colors duration-200 h-full relative group">
-                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 cursor-grab active:cursor-grabbing z-10">
-                    <GripHorizontal size={20} />
-                </div>
+                {isDraggable && (
+                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 cursor-grab active:cursor-grabbing z-10">
+                        <GripHorizontal size={20} />
+                    </div>
+                )}
                 <div className="flex items-center justify-between mb-6">
                     <h3 className="text-lg font-bold text-gray-800 dark:text-white">{title}</h3>
                 </div>
@@ -326,13 +457,91 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
         );
     };
 
+    // Helper to determine card width class
+    const getWidthClass = (id) => {
+        const width = cardWidths[id] || '1/3';
+        switch (width) {
+            case '1/2': return 'lg:basis-[calc(50%-1.5rem)]';
+            case 'full': return 'lg:basis-full';
+            case '1/3': default: return 'lg:basis-[calc(33.333%-1.5rem)]';
+        }
+    };
+
+    const handleWidthChange = (id, width, e) => {
+        e.stopPropagation(); // Prevent drag start
+        router.post(route('dashboard.card.width'), { id, width }, { preserveScroll: true });
+    };
+
+    // Mock Data for Locked State
+    const mockAdvancedStats = {
+        balanceEvolution: Array.from({ length: 15 }, (_, i) => ({
+            date: new Date(Date.now() - (14 - i) * 24 * 60 * 60 * 1000).toISOString(),
+            balance: Math.random() * 5000 + 1000
+        })),
+        cashFlow: Array.from({ length: 7 }, (_, i) => ({
+            label: new Date(0, i).toLocaleString('pt-BR', { month: 'short' }),
+            income: Math.random() * 5000 + 2000,
+            expense: Math.random() * 4000 + 1000
+        })),
+        topTransactions: Array.from({ length: 5 }, (_, i) => ({
+            id: i,
+            description: `Transação Exemplo ${i + 1}`,
+            amount: Math.random() * 500 + 100,
+            type: Math.random() > 0.5 ? 'income' : 'expense',
+            transaction_date: new Date().toISOString(),
+            category: { name: 'Geral', color: '#9ca3af' }
+        })),
+        statusStats: {
+            paid: { count: 15, total: 4500 },
+            pending: { count: 5, total: 1200 },
+            overdue: { count: 2, total: 300 }
+        },
+        nextDue: Array.from({ length: 5 }, (_, i) => ({
+            id: i,
+            description: `Conta a Vencer ${i + 1}`,
+            amount: Math.random() * 200 + 50,
+            type: 'expense',
+            transaction_date: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000).toISOString(),
+            category: { name: 'Contas', color: '#ef4444' }
+        }))
+    };
+
     const renderItem = (id) => {
-        if (id === 'balance') return renderCard('balance', 'Saldo Atual', summary?.balance, <Wallet size={24}/>, summary?.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400', 'bg-blue-100 dark:bg-blue-900/30', id);
-        if (id === 'income') return renderCard('income', 'Receitas', summary?.income, <TrendingUp size={24}/>, 'text-green-600 dark:text-green-400', 'bg-green-100 dark:bg-green-900/30', id);
-        if (id === 'expense') return renderCard('expense', 'Despesas', summary?.expense, <TrendingDown size={24}/>, 'text-red-600 dark:text-red-400', 'bg-red-100 dark:bg-red-900/30', id);
+        if (id === 'balance') return renderCard('balance', 'Saldo Atual', summary?.balance, <Wallet size={24}/>, summary?.balance >= 0 ? 'text-blue-600 dark:text-blue-400' : 'text-red-600 dark:text-red-400', 'bg-blue-100 dark:bg-blue-900/30', id, false, 'none', [], summary?.comparison?.balance);
+        if (id === 'income') return renderCard('income', 'Receitas', summary?.income, <TrendingUp size={24}/>, 'text-green-600 dark:text-green-400', 'bg-green-100 dark:bg-green-900/30', id, false, 'none', [], summary?.comparison?.income);
+        if (id === 'expense') return renderCard('expense', 'Despesas', summary?.expense, <TrendingDown size={24}/>, 'text-red-600 dark:text-red-400', 'bg-red-100 dark:bg-red-900/30', id, false, 'none', [], summary?.comparison?.expense);
         
         if (id === 'chart_income') return renderChart('Entradas por Categoria', 'incomeByCategory', id);
         if (id === 'chart_expense') return renderChart('Saídas por Categoria', 'expenseByCategory', id);
+
+        // Advanced Charts
+        switch (id) {
+            case 'advanced_balance_evolution':
+                return <BalanceEvolutionChart 
+                    data={hasAdvancedAccess ? advancedStats.balanceEvolution : mockAdvancedStats.balanceEvolution} 
+                    isLocked={!hasAdvancedAccess}
+                />;
+            case 'advanced_cash_flow':
+                return <CashFlowChart 
+                    data={hasAdvancedAccess ? advancedStats.cashFlow : mockAdvancedStats.cashFlow} 
+                    isLocked={!hasAdvancedAccess}
+                />;
+            case 'advanced_top_transactions':
+                return <TopTransactionsList 
+                    transactions={hasAdvancedAccess ? advancedStats.topTransactions : mockAdvancedStats.topTransactions} 
+                    isLocked={!hasAdvancedAccess}
+                />;
+            case 'advanced_status_stats':
+                return <StatusStatsChart 
+                    stats={hasAdvancedAccess ? advancedStats.statusStats : mockAdvancedStats.statusStats} 
+                    isLocked={!hasAdvancedAccess}
+                />;
+            case 'advanced_next_due':
+                return <NextDueList 
+                    transactions={hasAdvancedAccess ? advancedStats.nextDue : mockAdvancedStats.nextDue} 
+                    isLocked={!hasAdvancedAccess}
+                />;
+        }
 
         if (id.startsWith('widget_')) {
             const widget = widgets[id];
@@ -346,7 +555,9 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                 isIncome ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400',
                 isIncome ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30',
                 id,
-                true
+                true,
+                widget.chart_type,
+                widget.breakdown
             );
         }
         return null;
@@ -355,7 +566,27 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
     return (
         <AuthenticatedLayout header={
             <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>
+                <div className="flex items-center gap-3">
+                    <h2 className="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">Dashboard</h2>
+                    {hasAdvancedAccess && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => router.post(route('dashboard.layout.reset'), {}, { preserveScroll: true })}
+                                className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors"
+                                title="Restaurar Layout Padrão"
+                            >
+                                <RotateCcw size={20} />
+                            </button>
+                            <button
+                                onClick={() => setIsDraggable(!isDraggable)}
+                                className={`p-2 rounded-full transition-colors ${isDraggable ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/30 dark:text-primary-400' : 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}`}
+                                title={isDraggable ? 'Bloquear Layout' : 'Desbloquear Layout'}
+                            >
+                                {isDraggable ? <Unlock size={20} /> : <Lock size={20} />}
+                            </button>
+                        </div>
+                    )}
+                </div>
                 
                 <div className="flex flex-wrap items-center gap-3">
                     {auth.user.plan && (
@@ -421,21 +652,51 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                         items={items}
                         strategy={rectSortingStrategy}
                     >
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div className="flex flex-wrap gap-6">
                             {items.map((id) => (
                                 <SortableItem 
                                     key={id} 
                                     id={id}
-                                    className={id.startsWith('chart_') ? 'md:col-span-1 lg:col-span-1 xl:col-span-1' : ''} 
+                                    disabled={!isDraggable}
+                                    className={`
+                                        flex-grow basis-[300px] md:basis-[calc(50%-1.5rem)]
+                                        ${getWidthClass(id)}
+                                        max-w-full
+                                    `} 
                                 >
-                                    <div className={`h-full ${id.startsWith('chart_') ? 'min-h-[300px]' : ''}`}>
+                                    <div className={`h-full relative group ${id.startsWith('chart_') ? 'min-h-[300px]' : ''}`}>
+                                        {isDraggable && (
+                                            <div className="absolute -top-3 right-0 z-50 flex gap-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 px-1 py-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button 
+                                                    onClick={(e) => handleWidthChange(id, '1/3', e)} 
+                                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${!cardWidths[id] || cardWidths[id] === '1/3' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400'}`}
+                                                    title="Ocupar 33% (3 cards por linha)"
+                                                >
+                                                    33%
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleWidthChange(id, '1/2', e)} 
+                                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cardWidths[id] === '1/2' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400'}`}
+                                                    title="Ocupar 50% (2 cards por linha)"
+                                                >
+                                                    50%
+                                                </button>
+                                                <button 
+                                                    onClick={(e) => handleWidthChange(id, 'full', e)} 
+                                                    className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${cardWidths[id] === 'full' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300' : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-400'}`}
+                                                    title="Ocupar 100% (Linha inteira)"
+                                                >
+                                                    100%
+                                                </button>
+                                            </div>
+                                        )}
                                         {renderItem(id)}
                                     </div>
                                 </SortableItem>
                             ))}
 
                             {/* Add Widget Button */}
-                            <div className="flex items-center justify-center min-h-[200px]">
+                            <div className="flex items-center justify-center min-h-[200px] flex-grow basis-[300px] md:basis-[calc(50%-1.5rem)] lg:basis-[calc(33.333%-1.5rem)] bg-gray-50 dark:bg-gray-800/50 rounded-2xl border-2 border-dashed border-gray-200 dark:border-gray-700">
                                 {auth.user.features?.includes('create_custom_cards') ? (
                                     <button
                                         onClick={() => setShowAddWidgetModal(true)}
@@ -468,7 +729,7 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                             <InputLabel htmlFor="name" value="Nome do Card" />
                             <TextInput
                                 id="name"
-                                value={widgetData.name}
+                                value={formWidgetData.name}
                                 onChange={(e) => setWidgetData('name', e.target.value)}
                                 className="mt-1 block w-full"
                                 placeholder="Ex: Gastos Mercado"
@@ -484,7 +745,7 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                                         type="radio" 
                                         name="type" 
                                         value="income"
-                                        checked={widgetData.type === 'income' && widgetData.filters.type === 'income'}
+                                        checked={formWidgetData.type === 'income' && formWidgetData.filters.type === 'income'}
                                         onChange={() => setWidgetData(d => ({ ...d, type: 'income', filters: { ...d.filters, type: 'income' } }))}
                                         className="rounded-full border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
                                     />
@@ -495,7 +756,7 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                                         type="radio" 
                                         name="type" 
                                         value="expense"
-                                        checked={widgetData.type === 'expense' && widgetData.filters.type === 'expense'}
+                                        checked={formWidgetData.type === 'expense' && formWidgetData.filters.type === 'expense'}
                                         onChange={() => setWidgetData(d => ({ ...d, type: 'expense', filters: { ...d.filters, type: 'expense' } }))}
                                         className="rounded-full border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
                                     />
@@ -507,12 +768,12 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                         <div className="mb-4">
                             <InputLabel value="Filtrar por Categorias (Opcional)" />
                             <div className="mt-2 grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-gray-200 dark:border-gray-700 rounded-md">
-                                {categories.filter(c => c.type === widgetData.type).map(cat => (
+                                {categories.filter(c => c.type === formWidgetData.type).map(cat => (
                                     <div 
                                         key={cat.id}
                                         onClick={() => toggleCategory(cat.id)}
                                         className={`p-2 rounded-full cursor-pointer text-sm border transition-colors ${
-                                            widgetData.filters.categories.includes(cat.id) 
+                                            formWidgetData.filters.categories.includes(cat.id) 
                                             ? 'bg-blue-100 border-blue-500 text-blue-800 dark:bg-blue-900 dark:text-blue-200' 
                                             : 'border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'
                                         }`}
@@ -520,7 +781,7 @@ export default function Dashboard({ auth, summary, charts, widgets, layout, cate
                                         {cat.name}
                                     </div>
                                 ))}
-                                {categories.filter(c => c.type === widgetData.type).length === 0 && (
+                                {categories.filter(c => c.type === formWidgetData.type).length === 0 && (
                                     <p className="col-span-2 text-gray-500 text-sm p-2">Nenhuma categoria encontrada para este tipo.</p>
                                 )}
                             </div>

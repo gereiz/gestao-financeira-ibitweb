@@ -33,6 +33,23 @@ class DashboardWidgetController extends Controller
         return back()->with('success', 'Widget criado com sucesso!');
     }
 
+    public function update(Request $request, DashboardWidget $widget)
+    {
+        if ($widget->user_id !== Auth::id()) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'filters' => 'required|array',
+        ]);
+
+        $widget->update([
+            'filters' => array_merge($widget->filters ?? [], $validated['filters'])
+        ]);
+
+        return back()->with('success', 'Widget atualizado com sucesso!');
+    }
+
     public function destroy(DashboardWidget $widget)
     {
         if ($widget->user_id !== Auth::id()) {
@@ -57,6 +74,10 @@ class DashboardWidgetController extends Controller
     
     public function updateOrder(Request $request)
     {
+        if (!Auth::user()->hasFeature('advanced_charts')) {
+            abort(403, 'Funcionalidade restrita ao plano Premium.');
+        }
+
         $request->validate([
             'layout' => 'required|array',
         ]);

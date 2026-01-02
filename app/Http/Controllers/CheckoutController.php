@@ -43,46 +43,70 @@ class CheckoutController extends Controller
     private function createSubscription($user, $plan, $accessToken)
     {
         try {
-            // Em vez de criar uma preapproval direta (que exige cartão tokenizado e causa erro 400),
-            // voltamos a usar o endpoint do Plano para pegar o init_point, 
-            // mas sem tentar forçar external_reference na URL se isso falhar.
-            // O MercadoPago recomenda criar uma preferência ou usar o link do plano.
-            // No caso de assinaturas simples, o link do plano é o mais seguro.
+            // Tentativa 1: Criar preferência de assinatura (Preapproval) via API
+            // Isso gera um init_point único para o usuário, permitindo external_reference e back_url corretos.
+            // O erro 'card_token_id required' ocorre se enviarmos campos que forçam cobrança imediata (como status).
             
-            $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/preapproval_plan/{$plan->mercadopago_plan_id}");
-
-            if ($response->failed()) {
-                Log::error('MP Get Plan Error', ['body' => $response->body()]);
-                return redirect()->back()->with('error', 'Erro ao obter dados do plano de assinatura. Tente novamente.');
+            $backUrl = route('checkout.success');
+            // Ensure HTTPS in production
+            if (!app()->environment('local') && str_starts_with($backUrl, 'http://')) {
+                $backUrl = str_replace('http://', 'https://', $backUrl);
+            }
+            if (app()->environment('local') && (str_contains($backUrl, 'localhost') || str_contains($backUrl, '127.0.0.1'))) {
+                $backUrl = 'https://www.google.com';
             }
 
-            $mpPlan = $response->json();
-            
-            if (!isset($mpPlan['init_point'])) {
-                Log::error('MP Plan missing init_point', ['plan' => $mpPlan]);
-                return redirect()->back()->with('error', 'Erro de configuração do plano no gateway.');
-            }
-
-            $initPoint = $mpPlan['init_point'];
-            
-            // Para rastrear o usuário, vamos confiar no e-mail do pagador (payer_email) que o usuário preencher no checkout
-            // ou tentar passar o external_reference se a URL permitir (alguns fluxos aceitam)
-            
             $externalRef = json_encode([
                 'user_id' => $user->id,
                 'plan_id' => $plan->id,
                 'type' => 'subscription'
             ]);
-            
-            // Tenta adicionar external_reference como query param, mas sabendo que o MP pode ignorar
-            // A solução definitiva para vincular é o Webhook verificar o e-mail ou,
-            // idealmente, criar uma "Preapproval" mas fornecendo o `card_token_id` (o que exige checkout transparente no frontend).
-            // Como estamos usando checkout redirect, voltamos ao básico: Link do Plano.
-            
-            $separator = (parse_url($initPoint, PHP_URL_QUERY) == NULL) ? '?' : '&';
-            $redirectUrl = $initPoint . $separator . 'external_reference=' . urlencode($externalRef) . '&payer_email=' . urlencode($user->email);
 
-            Log::info('MercadoPago Subscription Redirect (Plan Link)', ['url' => $redirectUrl]);
+            // Payload mínimo para criar checkout de assinatura
+            $payload = [
+                'preapproval_plan_id' => $plan->mercadopago_plan_id,
+                'payer_email' => $user->email,
+                'back_url' => $backUrl,
+                'external_reference' => $externalRef,
+                // Não enviar status ou reason para evitar erro de card_token_id
+            ];
+
+            Log::info('Creating MP Subscription (Preapproval)', $payload);
+
+            $response = Http::withToken($accessToken)->post('https://api.mercadopago.com/preapproval', $payload);
+
+            if ($response->successful()) {
+                $subscription = $response->json();
+                if (isset($subscription['init_point'])) {
+                    Log::info('MercadoPago Subscription Redirect (API)', ['url' => $subscription['init_point']]);
+                    return Inertia::location($subscription['init_point']);
+                }
+            }
+            
+            Log::warning('MP Subscription API failed, falling back to Plan Link', ['body' => $response->body()]);
+
+            // Fallback: Link do Plano direto (sem tracking avançado na URL para evitar erros)
+            // Se a API falhar, usamos o link do plano. O tracking dependerá do e-mail do usuário.
+            
+            $response = Http::withToken($accessToken)->get("https://api.mercadopago.com/preapproval_plan/{$plan->mercadopago_plan_id}");
+            
+            if ($response->failed()) {
+                return redirect()->back()->with('error', 'Erro ao conectar com gateway de pagamento.');
+            }
+
+            $mpPlan = $response->json();
+            $initPoint = $mpPlan['init_point'] ?? null;
+
+            if (!$initPoint) {
+                return redirect()->back()->with('error', 'Erro de configuração do plano no gateway.');
+            }
+            
+            // Adicionamos apenas o payer_email para facilitar o preenchimento, sem external_reference na URL
+            // pois isso pode quebrar o link em alguns casos.
+            $separator = (parse_url($initPoint, PHP_URL_QUERY) == NULL) ? '?' : '&';
+            $redirectUrl = $initPoint . $separator . 'payer_email=' . urlencode($user->email);
+
+            Log::info('MercadoPago Subscription Redirect (Fallback)', ['url' => $redirectUrl]);
 
             return Inertia::location($redirectUrl);
 

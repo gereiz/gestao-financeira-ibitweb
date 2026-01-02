@@ -15,13 +15,14 @@ use Illuminate\Support\Facades\Log;
 
 class PlanController extends Controller
 {
-    private $availableFeatures = [
-        'future_transactions' => 'Lançamentos Futuros',
-        'notifications' => 'Notificações',
-        'advanced_reports' => 'Relatórios Avançados',
-        'access_categories' => 'Acessar Categorias',
-        'create_custom_cards' => 'Criar Cards Personalizados',
-    ];
+    // private $availableFeatures = [
+    //     'future_transactions' => 'Lançamentos Futuros',
+    //     'notifications' => 'Notificações',
+    //     'advanced_reports' => 'Relatórios Avançados',
+    //     'advanced_charts' => 'Ver Gráficos Avançados',
+    //     'access_categories' => 'Acessar Categorias',
+    //     'create_custom_cards' => 'Criar Cards Personalizados',
+    // ];
 
     public function index()
     {
@@ -34,7 +35,7 @@ class PlanController extends Controller
     public function create()
     {
         return Inertia::render('Admin/Plans/Create', [
-            'availableFeatures' => $this->availableFeatures
+            'availableFeatures' => Feature::getAvailableFeatures()
         ]);
     }
 
@@ -49,10 +50,13 @@ class PlanController extends Controller
             'features' => 'array',
             'is_featured' => 'boolean',
             'is_recurring' => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
-        $validated['is_active'] = true;
+        if (!isset($validated['is_active'])) {
+            $validated['is_active'] = true;
+        }
         
         // Se for recorrente, criar no Mercado Pago
         if (!empty($validated['is_recurring']) && $validated['is_recurring']) {
@@ -68,11 +72,12 @@ class PlanController extends Controller
 
         // Sync Features
         if (isset($validated['features'])) {
+            $availableFeatures = Feature::getAvailableFeatures();
             foreach ($validated['features'] as $slug) {
-                if (array_key_exists($slug, $this->availableFeatures)) {
+                if (array_key_exists($slug, $availableFeatures)) {
                     Feature::create([
                         'plan_id' => $plan->id,
-                        'name' => $this->availableFeatures[$slug],
+                        'name' => $availableFeatures[$slug],
                         'slug' => $slug,
                         'is_enabled' => true,
                     ]);
@@ -89,7 +94,7 @@ class PlanController extends Controller
         
         return Inertia::render('Admin/Plans/Edit', [
             'plan' => $plan,
-            'availableFeatures' => $this->availableFeatures,
+            'availableFeatures' => Feature::getAvailableFeatures(),
             'planFeatures' => $plan->features->pluck('slug')->toArray()
         ]);
     }
@@ -105,6 +110,7 @@ class PlanController extends Controller
             'features' => 'array',
             'is_featured' => 'boolean',
             'is_recurring' => 'boolean',
+            'is_active' => 'boolean',
         ]);
 
         $validated['slug'] = Str::slug($validated['name']);
@@ -132,11 +138,12 @@ class PlanController extends Controller
         $plan->features()->delete();
         
         if (isset($validated['features'])) {
+            $availableFeatures = Feature::getAvailableFeatures();
             foreach ($validated['features'] as $slug) {
-                if (array_key_exists($slug, $this->availableFeatures)) {
+                if (array_key_exists($slug, $availableFeatures)) {
                     Feature::create([
                         'plan_id' => $plan->id,
-                        'name' => $this->availableFeatures[$slug],
+                        'name' => $availableFeatures[$slug],
                         'slug' => $slug,
                         'is_enabled' => true,
                     ]);

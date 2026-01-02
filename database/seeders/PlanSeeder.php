@@ -38,11 +38,7 @@ class PlanSeeder extends Seeder
         );
 
         // Define Features
-        $features = [
-            'future_transactions' => 'Lançamentos Futuros',
-            'notifications' => 'Notificações',
-            'advanced_reports' => 'Relatórios Avançados',
-        ];
+        $features = Feature::getAvailableFeatures();
 
         // Assign Features to Plans
         // Free Plan: No advanced features
